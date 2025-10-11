@@ -1,0 +1,85 @@
+import pandas as pd
+import os 
+from glob import glob
+from typing import List
+class DataFactory:
+    def __init__(self, img_path, metadata_path):
+        self.img_path = img_path
+        self.metadata_path = metadata_path
+
+    def load_data(self, verbose=True) -> pd.DataFrame | None:
+        image_files = glob(os.path.join(self.img_path, "**", "*.jpg"), recursive=True)
+        if not image_files:
+            raise FileNotFoundError(f"Nenhum arquivo de imagem encontrado em {self.img_path}")
+        if verbose:
+            print(f"Número de arquivos de imagem encontrados: {len(image_files)}")
+        
+        patient_ids, valid_files, new_binary_labels = [], [], []
+        for file_path in image_files:
+            diagnosis = self.get_diagnosis_from_filename(file_path)
+            if diagnosis is not None:
+                patient_id = self.get_patient_id_from_filename(file_path)
+                if patient_id is None:
+                    continue
+                patient_ids.append(patient_id)
+                binary_label = self.convert_to_binary_label(diagnosis, not_rop_list=[0]) #COnsiderando apenas 0 como sem ROP
+                valid_files.append(file_path)
+                new_binary_labels.append(binary_label)
+        if verbose:
+                print(f"Número de arquivos válidos após filtragem: {len(valid_files)}")
+        
+        binarized_dataframe = pd.DataFrame({
+            'patient_id': patient_ids,
+            'filepath': valid_files,
+            'binary_label': new_binary_labels
+        })
+
+        return binarized_dataframe
+
+
+    def prepare_metadata(self, metadata_path, verbose=True) -> pd.DataFrame | None:
+        try:
+            metadata_df:pd.DataFrame = pd.read_csv(metadata_path)
+            if verbose:
+                print(f"Shape dos metadados: {metadata_df.shape}")
+                print(f"Colunas dos metadados: {metadata_df.columns.tolist()}")
+                return metadata_df
+        except Exception as e:
+            raise RuntimeError(f"Erro ao ler o arquivo CSV de metadados: {e}")
+        return None
+
+    def get_diagnosis_from_filename(self, filename:str) -> int | None:
+        '''
+            Dado o nome do arquivo de imagem (ex: IMG_001_DG2_....jpg), extrai o diagnóstico, no caso o valor numérico após 'DG'.
+            Obtido de: https://www.kaggle.com/code/mugwewaithaka/rop-screening-binary-deeplearning-model
+        '''
+        try:
+            parts = os.path.basename(filename).split('_')
+            for part in parts:
+                if part.startswith('DG'):
+                    return int(part[2:])  
+            return None
+        except Exception as e:
+            raise RuntimeError(f"Erro ao extrair o diagnóstico do nome do arquivo {filename}: {e}")
+
+    def get_patient_id_from_filename(self, filename:str) -> str | None:
+        '''
+            Dado o nome do arquivo de imagem, extrai o ID do paciente, no caso os primeiros três caracteres.
+        '''
+        try:
+            return os.path.basename(filename)[:3]
+        except Exception as e:
+            raise RuntimeError(f"Erro ao extrair o ID do paciente do nome do arquivo {filename}: {e}")
+
+    def convert_to_binary_label(self, code_diagnosis:int, not_rop_list:List[int]) -> int:
+        '''
+            Converte o código de diagnóstico em um rótulo binário.
+            0: Sem ROP (Retinopatia da Prematuridade)
+            1: Com ROP
+
+            not_rop_list: lista de códigos que indicam ausência de ROP. Ex: [0, 1, 2] indica que 0, 1 e 2 são códigos sem ROP.
+        '''
+        if code_diagnosis in not_rop_list:
+            return 0
+        else:
+            return 1
