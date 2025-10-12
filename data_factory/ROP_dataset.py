@@ -34,6 +34,12 @@ class ROPDataset(Dataset):
     def __len__(self):
         return len(self.dataframe)
 
+    def get_data_from_dataframe(self):
+        all_images_paths = self.dataframe['filepath'].tolist()
+        all_labels = np.array(self.dataframe['binary_label'].tolist())
+        all_patient_ids = np.array(self.dataframe['patient_id'].tolist())
+        return all_images_paths, all_labels, all_patient_ids
+
     def __getitem__(self, idx):
         img_path = self.dataframe.iloc[idx]['filepath']
         label = self.dataframe.iloc[idx]['binary_label']

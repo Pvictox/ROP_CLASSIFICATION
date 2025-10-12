@@ -1,7 +1,14 @@
+from re import X
 import pandas as pd
 import os 
 from glob import glob
 from typing import List
+from sympy import Subs
+from torch.utils.data import DataLoader, Subset
+from sklearn.model_selection import GroupShuffleSplit, GroupKFold
+
+from data_factory.ROP_dataset import ROPDataset
+
 class DataFactory:
     def __init__(self, img_path, metadata_path):
         self.img_path = img_path
@@ -83,3 +90,32 @@ class DataFactory:
             return 0
         else:
             return 1
+
+    def prepare_data_for_cross_validation(self, rop_dataset:ROPDataset, test_size=0.2, random_state=42, num_splits=5, verbose=True):
+        import numpy as np
+        
+        gss = GroupShuffleSplit(n_splits=1, test_size=test_size, random_state=random_state)
+        all_images_paths, all_labels, all_patient_ids = rop_dataset.get_data_from_dataframe()
+        
+        # Converter para arrays NumPy se necessário
+        all_images_paths = np.array(all_images_paths)
+        all_labels = np.array(all_labels)
+        all_patient_ids = np.array(all_patient_ids)
+        
+        train_indx, test_indx = next(gss.split(all_images_paths, all_labels, groups=all_patient_ids))
+
+        train_dataset = Subset(rop_dataset, train_indx.tolist())
+        test_dataset = Subset(rop_dataset, test_indx.tolist())
+
+        patient_ids_train = all_patient_ids[train_indx]
+
+        if verbose:
+            print(f"Numero de amostras no conjunto de treino: {len(train_dataset)}")
+            print(f"Numero de amostras no conjunto de teste: {len(test_dataset)}")
+        
+        gkf = GroupKFold(n_splits=num_splits)
+        X_train = all_images_paths[train_indx]
+        y_train = all_labels[train_indx]
+
+        return X_train, y_train, train_indx, patient_ids_train, gkf
+
