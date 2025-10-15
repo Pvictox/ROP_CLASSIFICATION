@@ -1,9 +1,11 @@
+import pandas as pd
 from sklearn.model_selection import GroupShuffleSplit, GroupKFold
 from torch.utils.data import Subset, DataLoader
-
+import numpy as np
 from data_factory.ROP_SUBSET_dataset import ROPSubset
 import torch
 import torch.nn as nn
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, roc_auc_score
 import torch.optim as optim
 import timm
 from torchvision import transforms
@@ -13,8 +15,8 @@ class TrainAndEvalWorker:
         if not config:
             print("Configuração vazia fornecida. Utilizando valores padrão.")
             self.config = {
-                'learning_rate': 1e-4,
-                'weight_decay': 1e-5,
+                'learning_rate': 1e-5,
+                'weight_decay': 1e-4,
                 'batch_size': 16,
                 'num_epochs': 30,
                 'device': 'cuda' if torch.cuda.is_available() else 'cpu',
@@ -90,11 +92,15 @@ class TrainAndEvalWorker:
         
         return val_accuracy, avg_val_loss
 
-    import torch
-
+    def setup_finetuning(self):
+        for param in self.model.parameters():
+            param.requires_grad = False
+        
+        for param in self.model.classifier.parameters():
+            param.requires_grad = True
+        
 
     def custom_collate_fn(self, batch):
-        # Se as imagens ainda são PIL, converta para tensor
         transform = transforms.ToTensor()
         
         images = []
@@ -113,13 +119,15 @@ class TrainAndEvalWorker:
 
 
     def train(self, X_train, y_train, patient_ids_train, train_index, gkf:GroupKFold, rop_dataset):
+        if self.model:
+            self.setup_finetuning()
         fold_results = []
         best_global_acc = 0.0
         best_model_state = None
         best_fold = 0
         for fold, (train_fold_idx, val_fold_idx) in enumerate(gkf.split(X_train, y_train, groups=patient_ids_train)):
             print(f"{'='*20}")
-            print(f"Fold {fold+1}/{gkf.n_splits}")
+            print(f"Fold {fold+1}/{gkf.n_splits}") #type:ignore
             print(f"{'='*20}")
 
             train_fold_absolute_index = train_index[train_fold_idx]
@@ -187,6 +195,90 @@ class TrainAndEvalWorker:
         
         return fold_results
 
-    def evaluate(self):
-        pass
+    def evaluate(self, test_dataset, model_path=None):
+        if model_path:
+            self.model.load_state_dict(torch.load(model_path, map_location=self.config['device']))
+            print(f"Modelo carregado de: {model_path}")
+        
+        test_loader = DataLoader(
+            test_dataset,
+            batch_size=self.config.get('batch_size', 32),
+            shuffle=False,
+            num_workers=4,
+            collate_fn=self.custom_collate_fn
+        )
+        
+        self.model.eval()
+        
+        all_predictions = []
+        all_targets = []
+        all_probs = []
+        test_loss = 0.0
+        
+        print("Avaliando modelo no conjunto de teste...")
+        
+        with torch.no_grad():
+            for data, targets in test_loader:
+                data, targets = data.to(self.config['device']), targets.float().to(self.config['device'])
+                outputs = self.model(data).squeeze(-1)
+                
+                loss = self.criterion(outputs, targets)
+                test_loss += loss.item()
+                
+                probs = torch.sigmoid(outputs)
+                predicted = (probs > 0.5).float() 
+                
+                all_predictions.extend(predicted.cpu().numpy())
+                all_targets.extend(targets.cpu().numpy())
+                all_probs.extend(probs.cpu().numpy())
+    
+        all_predictions = np.array(all_predictions).astype(int) 
+        all_targets = np.array(all_targets).astype(int)
+        all_probs = np.array(all_probs)
+        
+        accuracy = accuracy_score(all_targets, all_predictions)
+        precision = precision_score(all_targets, all_predictions, zero_division=0)
+        recall = recall_score(all_targets, all_predictions, zero_division=0)
+        f1 = f1_score(all_targets, all_predictions, zero_division=0)
+        conf_matrix = confusion_matrix(all_targets, all_predictions)
+        
+        # Calcula AUC-ROC se houver ambas as classes
+        try:
+            auc_roc = roc_auc_score(all_targets, all_probs)
+        except:
+            auc_roc = None
+            print("Aviso: Não foi possível calcular AUC-ROC (pode haver apenas uma classe no conjunto de teste)")
+        
+        avg_test_loss = test_loss / len(test_loader)
+        
+        # Exibe resultados
+        print(f"\n{'='*50}")
+        print(f"Resultados da Avaliação no Conjunto de Teste")
+        print(f"{'='*50}")
+        print(f"Test Loss: {avg_test_loss:.4f}")
+        print(f"Accuracy: {accuracy*100:.2f}%")
+        print(f"Precision: {precision:.4f}")
+        print(f"Recall: {recall:.4f}")
+        print(f"F1-Score: {f1:.4f}")
+        if auc_roc is not None:
+            print(f"AUC-ROC: {auc_roc:.4f}")
+        print(f"\nConfusion Matrix:")
+        print(conf_matrix)
+        print(f"{'='*50}")
+        
+        results = {
+            'test_loss': avg_test_loss,
+            'accuracy': accuracy,
+            'precision': precision,
+            'recall': recall,
+            'f1_score': f1,
+            'auc_roc': auc_roc,
+            # 'confusion_matrix': conf_matrix,
+            
+        }
+
+        #salvando results
+        pd.DataFrame(results, index=[0]).to_csv('/home/pedro_fonseca/PATIENT_ROP/test_results.csv')
+        
+        return results
 

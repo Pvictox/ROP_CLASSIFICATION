@@ -1,5 +1,6 @@
 
 
+import test
 from data_factory.data_factory import DataFactory
 from utils import Utils
 from data_factory.ROP_dataset import ROPDataset
@@ -17,10 +18,12 @@ def main():
         print(df.head())
         print(f"Número total de imagens processadas: {len(df)}")        
         rop_dataset = ROPDataset(df, is_train=False, apply_clahe=True)
-        X_train, y_train, train_indx, patient_ids_train, gkf = data_factory.prepare_data_for_cross_validation(rop_dataset)
+        X_train, y_train, train_indx, patient_ids_train, gkf, test_dataset = data_factory.prepare_data_for_cross_validation(rop_dataset)
         train_and_val_worker = TrainAndEvalWorker(config=None)
         print("Iniciando o treinamento e validação com GroupKFold...")
         train_and_val_worker.train(X_train, y_train, patient_ids_train, train_indx, gkf, rop_dataset)
+        print("Iniciando a avaliação no conjunto de teste...")
+        results = train_and_val_worker.evaluate(test_dataset, model_path='/home/pedro_fonseca/PATIENT_ROP/saved_models/best_model_efficientNET.pth')
 
             #Dividir em treino e teste
             #Treino e evalidação por paciente

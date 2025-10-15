@@ -14,6 +14,8 @@ class DataFactory:
         self.img_path = img_path
         self.metadata_path = metadata_path
 
+
+    #Todo: Realizar uma filtragem de acordo com o código do diagnóstico. 
     def load_data(self, verbose=True) -> pd.DataFrame | None:
         image_files = glob(os.path.join(self.img_path, "**", "*.jpg"), recursive=True)
         if not image_files:
@@ -29,7 +31,7 @@ class DataFactory:
                 if patient_id is None:
                     continue
                 patient_ids.append(patient_id)
-                binary_label = self.convert_to_binary_label(diagnosis, not_rop_list=[0]) #COnsiderando apenas 0 como sem ROP
+                binary_label = self.convert_to_binary_label(diagnosis, not_rop_list=[0, 10, 11, 12, 13]) #COnsiderando apenas 0 como sem ROP
                 valid_files.append(file_path)
                 new_binary_labels.append(binary_label)
         if verbose:
@@ -117,5 +119,22 @@ class DataFactory:
         X_train = all_images_paths[train_indx]
         y_train = all_labels[train_indx]
 
-        return X_train, y_train, train_indx, patient_ids_train, gkf
+        # train_df = pd.DataFrame({
+        #     'patient_id': all_patient_ids[train_indx],
+        #     'filepath': all_images_paths[train_indx],
+        #     'binary_label': all_labels[train_indx]
+        # })
+
+        # #salvando como parquet
+        # train_df.to_parquet('/home/pedro_fonseca/PATIENT_ROP/saved_subsets/train_data.parquet', index=False)
+        # test_df = pd.DataFrame({
+        #     'patient_id': all_patient_ids[test_indx],
+        #     'filepath': all_images_paths[test_indx],
+        #     'binary_label': all_labels[test_indx]
+        # })
+        # test_df.to_parquet('/home/pedro_fonseca/PATIENT_ROP/saved_subsets/test_data.parquet', index=False)
+
+
+
+        return X_train, y_train, train_indx, patient_ids_train, gkf, test_dataset
 
