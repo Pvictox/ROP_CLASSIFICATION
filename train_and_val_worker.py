@@ -187,7 +187,7 @@ class TrainAndEvalWorker:
                 print(f'Fold {fold+1} completed. Best Val Accuracy: {best_val_acc:.2f}%')
         
         if best_model_state is not None:
-            torch.save(best_model_state, '/home/pedro_fonseca/PATIENT_ROP/saved_models/best_model_efficientNET.pth')
+            torch.save(best_model_state, 'saved_models/best_model_efficientNET.pth')
             print(f'\nBest model saved! Fold {best_fold}, Accuracy: {best_global_acc:.2f}%')
         avg_accuracy = sum([r['best_val_accuracy'] for r in fold_results]) / len(fold_results)
         print(f'\nCross-Validation Results:')
@@ -278,7 +278,7 @@ class TrainAndEvalWorker:
         }
 
         #salvando results
-        pd.DataFrame(results, index=[0]).to_csv('/home/pedro_fonseca/PATIENT_ROP/test_results.csv')
+        pd.DataFrame(results, index=[0]).to_csv('test_results.csv')
         
         return results
 

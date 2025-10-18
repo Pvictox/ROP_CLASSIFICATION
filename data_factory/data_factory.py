@@ -16,17 +16,20 @@ class DataFactory:
 
 
     #Todo: Realizar uma filtragem de acordo com o código do diagnóstico. 
-    def load_data(self, verbose=True) -> pd.DataFrame | None:
+    def load_data(self, verbose=True, allowed_diagnoses=None) -> pd.DataFrame | None:
         image_files = glob(os.path.join(self.img_path, "**", "*.jpg"), recursive=True)
         if not image_files:
             raise FileNotFoundError(f"Nenhum arquivo de imagem encontrado em {self.img_path}")
         if verbose:
             print(f"Número de arquivos de imagem encontrados: {len(image_files)}")
-        
-        patient_ids, valid_files, new_binary_labels = [], [], []
+
+        patient_ids, valid_files, new_binary_labels, diagnosis_codes = [], [], [], []
         for file_path in image_files:
             diagnosis = self.get_diagnosis_from_filename(file_path)
+            if allowed_diagnoses is not None and diagnosis not in allowed_diagnoses: # Se a lista de diagnósticos permitidos for fornecida, filtrar
+                continue
             if diagnosis is not None:
+                diagnosis_codes.append(diagnosis)
                 patient_id = self.get_patient_id_from_filename(file_path)
                 if patient_id is None:
                     continue
@@ -40,7 +43,8 @@ class DataFactory:
         binarized_dataframe = pd.DataFrame({
             'patient_id': patient_ids,
             'filepath': valid_files,
-            'binary_label': new_binary_labels
+            'binary_label': new_binary_labels,
+            'diagnosis_code': diagnosis_codes
         })
 
         return binarized_dataframe
