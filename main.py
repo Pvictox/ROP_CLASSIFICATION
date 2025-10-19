@@ -12,6 +12,7 @@ CSV_FILE_PATH = '/backup/lucas/rop_dataset/infant_retinal_database_info.csv'
 
 IS_INTERACTIVE = True #Isto é uma flag para indicar se o código está sendo executado em um ambiente interativo (como Jupyter Notebook) ou não.
 
+os.makedirs('saved_models', exist_ok=True)
 def main():
     data_factory = DataFactory(IMG_FILE_PATH, CSV_FILE_PATH)
     df = data_factory.load_data(allowed_diagnoses=[0, 1, 2, 3, 4,8,9])  #1–4, 8, 9 (ROP) contra 0 (physiological)
@@ -25,7 +26,6 @@ def main():
         print("Iniciando o treinamento e validação com GroupKFold...")
         train_and_val_worker.train(X_train, y_train, patient_ids_train, train_indx, gkf, rop_dataset)
         print("Iniciando a avaliação no conjunto de teste...")
-        os.makedirs('saved_models', exist_ok=True)
         results = train_and_val_worker.evaluate(test_dataset, model_path='saved_models/best_model_efficientNET.pth')
 
             #Dividir em treino e teste
