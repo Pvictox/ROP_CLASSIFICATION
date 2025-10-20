@@ -2,11 +2,11 @@ from re import X
 import pandas as pd
 import os 
 from glob import glob
-from typing import List
+from typing import Counter, List
 from sympy import Subs
 from torch.utils.data import DataLoader, Subset
-from sklearn.model_selection import GroupShuffleSplit, GroupKFold
-
+from sklearn.model_selection import GroupShuffleSplit, GroupKFold, train_test_split
+import numpy as np
 from data_factory.ROP_dataset import ROPDataset
 
 class DataFactory:
@@ -142,3 +142,56 @@ class DataFactory:
 
         return X_train, y_train, train_indx, patient_ids_train, gkf, test_dataset
 
+    def prepare_data_for_cross_validation_2(self, rop_dataset, test_size=0.2, random_state=42, num_splits=5, verbose=True):
+    # Copiar o dataframe original do dataset
+        df = rop_dataset.dataframe.copy()
+        
+        # Calcular a classe média/dominante por paciente
+        patient_class = df.groupby('patient_id')['binary_label'].mean().reset_index()
+        patient_class['label_class'] = (patient_class['binary_label'] > 0.5).astype(int)
+        
+        # Split estratificado por paciente
+        train_patients, test_patients = train_test_split(
+            patient_class['patient_id'],
+            test_size=test_size,
+            stratify=patient_class['label_class'],
+            random_state=random_state
+        )
+        
+        # Filtrar amostras do dataset original
+        train_df = df[df['patient_id'].isin(train_patients)]
+        test_df = df[df['patient_id'].isin(test_patients)]
+        
+        if verbose:
+            print("Distribuição de classes (treino):", Counter(train_df['binary_label']))
+            print("Distribuição de classes (teste):", Counter(test_df['binary_label']))
+            print(f"Número de pacientes treino: {train_df['patient_id'].nunique()}")
+            print(f"Número de pacientes teste: {test_df['patient_id'].nunique()}")
+            print(f"Número de imagens treino: {len(train_df)}")
+            print(f"Número de imagens teste: {len(test_df)}")
+        
+        # Converter para arrays
+        all_images_paths = df['filepath'].values
+        all_labels = df['binary_label'].values
+        all_patient_ids = df['patient_id'].values
+
+        # Mapear os índices correspondentes
+        # train_indx = np.array(df.index[df['patient_id'].isin(train_patients)].tolist())
+        # test_indx = np.array(df.index[df['patient_id'].isin(test_patients)].tolist())
+
+        #
+        train_indx = np.array(df.index[df['patient_id'].isin(train_patients)].tolist())
+        test_indx = np.array(df.index[df['patient_id'].isin(test_patients)].tolist())
+        
+        # Criar os Subsets compatíveis com o resto do seu pipeline
+        train_dataset = Subset(rop_dataset, train_indx)
+        test_dataset = Subset(rop_dataset, test_indx)
+        
+        # Configurar o GroupKFold para CV (usando pacientes)
+        gkf = GroupKFold(n_splits=num_splits)
+        X_train = train_df['filepath'].values
+        y_train = train_df['binary_label'].values
+        patient_ids_train = train_df['patient_id'].values
+        
+        # Retornar os mesmos elementos que seu pipeline original espera
+        return X_train, y_train, train_indx, patient_ids_train, gkf, test_dataset

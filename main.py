@@ -21,14 +21,16 @@ def main():
         print(df.head())
         print(f"Número total de imagens processadas: {len(df)}")        
         rop_dataset = ROPDataset(df, is_train=False, apply_clahe=True)
-        X_train, y_train, train_indx, patient_ids_train, gkf, test_dataset = data_factory.prepare_data_for_cross_validation(rop_dataset)
+        # X_train, y_train, train_indx, patient_ids_train, gkf, test_dataset = data_factory.prepare_data_for_cross_validation(rop_dataset)
+        X_train, y_train, train_indx, patient_ids_train, gkf, test_dataset = data_factory.prepare_data_for_cross_validation_2(rop_dataset,num_splits=5)
+
         train_and_val_worker = TrainAndEvalWorker(config=None)
         print("Iniciando o treinamento e validação com GroupKFold...")
         train_and_val_worker.train(X_train, y_train, patient_ids_train, train_indx, gkf, rop_dataset)
-        print("Iniciando a avaliação no conjunto de teste...")
+        # print("Iniciando a avaliação no conjunto de teste...")
         results = train_and_val_worker.evaluate(test_dataset, model_path='saved_models/best_model_efficientNET.pth')
 
-            #Dividir em treino e teste
+        #     #Dividir em treino e teste
             #Treino e evalidação por paciente
             #Utils.plot_sample_images(rop_dataset, num_samples=5)
             
