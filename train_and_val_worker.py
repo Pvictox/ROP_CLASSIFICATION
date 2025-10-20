@@ -5,7 +5,7 @@ import numpy as np
 from data_factory.ROP_SUBSET_dataset import ROPSubset
 import torch
 import torch.nn as nn
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, roc_auc_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, roc_auc_score, roc_curve
 import torch.optim as optim
 import timm
 from torchvision import transforms
@@ -62,13 +62,14 @@ class TrainAndEvalWorker:
         train_accuracy = 100. * train_correct / train_total
         avg_train_loss = train_loss / len(train_loader)
 
-        val_accuracy, val_loss, val_auc = self.validate(val_loader)
-        
+        val_loss, val_auc, val_threshold = self.validate(val_loader)
+
         print(f'Train Loss: {avg_train_loss:.4f}, Train Acc: {train_accuracy:.2f}%, Val AUC: {val_auc:.4f}')
-        
+
         self.scheduler.step(val_loss)
         
-        return train_accuracy, val_accuracy, avg_train_loss, val_loss, val_auc
+        return train_accuracy, avg_train_loss, val_loss, val_auc, val_threshold
+
 
 
     def validate(self, val_loader):
@@ -76,7 +77,7 @@ class TrainAndEvalWorker:
         val_loss = 0.0
         all_targets = []
         all_outputs = []
-        
+
         with torch.no_grad():
             for data, targets in val_loader:
                 data, targets = data.to(self.config['device']), targets.float().to(self.config['device'])
@@ -86,21 +87,29 @@ class TrainAndEvalWorker:
 
                 all_targets.extend(targets.cpu().numpy())
                 all_outputs.extend(torch.sigmoid(outputs).cpu().numpy())
-        
-        # Cálculo das métricas
+
         all_targets = np.array(all_targets)
         all_outputs = np.array(all_outputs)
-        predicted = (all_outputs > 0.5).astype(int)
 
-        accuracy = accuracy_score(all_targets, predicted)
+        # Calcular AUC
         try:
-            auc = roc_auc_score(all_targets, all_outputs)
+            auc = roc_auc_score(all_targets, all_outputs, average='weighted')
         except:
-            auc = 0.5  # Caso uma das classes falte no batch
-        
+            auc = 0.5
+
+        # Calcular o threshold ótimo (Youden index)
+        try:
+            fpr, tpr, thresholds = roc_curve(all_targets, all_outputs)
+            youden_index = tpr - fpr
+            best_threshold = thresholds[np.argmax(youden_index)]
+        except:
+            best_threshold = 0.5  # fallback caso falte classe
+
         avg_val_loss = val_loss / len(val_loader)
-        
-        return accuracy, avg_val_loss, auc
+
+        return avg_val_loss, auc, best_threshold
+
+
 
     def setup_finetuning(self):
         for param in self.model.parameters():
@@ -132,9 +141,12 @@ class TrainAndEvalWorker:
         if self.model:
             self.setup_finetuning()
         fold_results = []
-        best_global_acc = 0.0
+        # usar AUC como métrica principal global
+        best_global_auc = 0.0
         best_model_state = None
         best_fold = 0
+        # coletor de thresholds ótimos (um por fold)
+        best_thresholds_per_fold = []
         for fold, (train_fold_idx, val_fold_idx) in enumerate(gkf.split(X_train, y_train, groups=patient_ids_train)):
             print(f"{'='*20}")
             print(f"Fold {fold+1}/{gkf.n_splits}") #type:ignore
@@ -186,28 +198,53 @@ class TrainAndEvalWorker:
                 weight_decay=self.config.get('weight_decay', 1e-5)
             )
 
-            best_val_acc = 0.0  
+            # track best threshold for this fold (associated to best val AUC in the fold)
+            best_val_auc = 0.0
+            best_threshold_fold = 0.5
             epochs = self.config.get('num_epochs', 50)
             
             for epoch in range(epochs):
                 print(f'\nEpoch {epoch+1}/{epochs}')
-                train_acc, val_acc, train_loss, val_loss, val_auc = self.train_epoch(train_loader, val_loader)
-                
-                # Usa AUC como critério principal
-                if val_auc > best_global_acc:
-                    best_global_acc = val_auc
+                train_acc, train_loss, val_loss, val_auc, val_threshold = self.train_epoch(train_loader, val_loader)
+
+                # atualizar melhor threshold do fold quando melhora a métrica de validação (AUC)
+                if val_auc > best_val_auc:
+                    best_val_auc = val_auc
+                    best_threshold_fold = val_threshold
+
+                # Usa AUC como critério principal para salvar melhor modelo global
+                if val_auc > best_global_auc:
+                    best_global_auc = val_auc
                     best_model_state = self.model.state_dict().copy()
                     best_fold = fold + 1
-                
-                fold_results.append({
-                    'fold': fold+1,
-                    'best_val_auc': best_global_acc
-                })
-                print(f'Fold {fold+1} completed. Best Val AUC: {best_global_acc:.4f}')
+
+                # (não registramos o fold_results aqui — registramos somente ao final do fold)
+                print(f'Epoch finished. Current fold best Val AUC: {best_val_auc:.4f}, Global best AUC: {best_global_auc:.4f}')
+            
+            # ao final do fold, armazenar o threshold ótimo encontrado para este fold
+            best_thresholds_per_fold.append(best_threshold_fold)
+            print(f"Fold {fold+1} best threshold: {best_threshold_fold:.4f} (best val AUC in fold: {best_val_auc:.4f})")
+            # registrar resultado resumido do fold
+            fold_results.append({
+                'fold': fold+1,
+                'best_val_auc': float(best_val_auc),
+                'best_threshold': float(best_threshold_fold)
+            })
         
+        # calcula média dos thresholds ótimos por fold e guarda em self (usado depois em evaluate)
+        if len(best_thresholds_per_fold) > 0:
+            self.avg_threshold = float(np.mean(best_thresholds_per_fold))
+            print(f"\nAverage threshold across folds: {self.avg_threshold:.4f}")
+            # opcional: salvar em arquivo (texto simples)
+            try:
+                with open('saved_models/avg_threshold.txt', 'w') as f:
+                    f.write(str(self.avg_threshold))
+            except Exception:
+                pass
+
         if best_model_state is not None:
             torch.save(best_model_state, 'saved_models/best_model_efficientNET.pth')
-            print(f'\nBest model saved! Fold {best_fold}, Accuracy: {best_global_acc:.2f}%')
+            print(f'\nBest model saved! Fold {best_fold}, Best AUC: {best_global_auc:.4f}')
         avg_auc = sum([r['best_val_auc'] for r in fold_results]) / len(fold_results)
         print(f'\nCross-Validation Results:')
         print(f'Average AUC: {avg_auc:.4f}')
@@ -245,7 +282,9 @@ class TrainAndEvalWorker:
                 test_loss += loss.item()
                 
                 probs = torch.sigmoid(outputs)
-                predicted = (probs > 0.5).float() 
+                # usa threshold médio calculado durante o treino, se disponível
+                threshold = getattr(self, 'avg_threshold', 0.5)
+                predicted = (probs > threshold).float() 
                 
                 all_predictions.extend(predicted.cpu().numpy())
                 all_targets.extend(targets.cpu().numpy())
@@ -254,6 +293,7 @@ class TrainAndEvalWorker:
         all_predictions = np.array(all_predictions).astype(int) 
         all_targets = np.array(all_targets).astype(int)
         all_probs = np.array(all_probs)
+        print(f"Using threshold = {getattr(self, 'avg_threshold', 0.5):.4f} for final predictions")
         
         accuracy = accuracy_score(all_targets, all_predictions)
         precision = precision_score(all_targets, all_predictions, zero_division=0)
@@ -263,7 +303,7 @@ class TrainAndEvalWorker:
         
         # Calcula AUC-ROC se houver ambas as classes
         try:
-            auc_roc = roc_auc_score(all_targets, all_probs)
+            auc_roc = roc_auc_score(all_targets, all_probs, average='weighted')
         except:
             auc_roc = None
             print("Aviso: Não foi possível calcular AUC-ROC (pode haver apenas uma classe no conjunto de teste)")
