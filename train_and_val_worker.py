@@ -9,6 +9,9 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 import torch.optim as optim
 import timm
 from torchvision import transforms
+from torch.utils.data import WeightedRandomSampler
+
+import torch.nn.functional as F
 
 class TrainAndEvalWorker:
     def __init__(self, config:dict):
@@ -30,7 +33,8 @@ class TrainAndEvalWorker:
             lr=self.config.get('learning_rate', 1e-4),
             weight_decay=self.config.get('weight_decay', 1e-5)
         )
-        self.criterion = nn.BCEWithLogitsLoss()
+        # self.criterion = nn.BCEWithLogitsLoss()
+        self.criterion = BinaryFocalLoss(alpha=0.75, gamma=1.0)
         self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='min', factor=0.1, patience=5)
 
     def train_epoch(self, train_loader, val_loader):
@@ -41,13 +45,11 @@ class TrainAndEvalWorker:
         
         for batch_idx, (data, targets) in enumerate(train_loader):
             data, targets = data.to(self.config['device']), targets.float().to(self.config['device'])
-            
             self.optimizer.zero_grad()
-            outputs = self.model(data).squeeze(-1)  # Remove apenas a última dimensão
+            outputs = self.model(data).squeeze(-1)
             loss = self.criterion(outputs, targets)
             loss.backward()
             self.optimizer.step()
-            
 
             predicted = torch.sigmoid(outputs) > 0.5
             train_total += targets.size(0)
@@ -59,38 +61,46 @@ class TrainAndEvalWorker:
         
         train_accuracy = 100. * train_correct / train_total
         avg_train_loss = train_loss / len(train_loader)
+
+        val_accuracy, val_loss, val_auc = self.validate(val_loader)
         
-    
-        val_accuracy, val_loss = self.validate(val_loader)
-        
-        print(f'Train Loss: {avg_train_loss:.4f}, Train Acc: {train_accuracy:.2f}%')
-        print(f'Val Loss: {val_loss:.4f}, Val Acc: {val_accuracy:.2f}%')
+        print(f'Train Loss: {avg_train_loss:.4f}, Train Acc: {train_accuracy:.2f}%, Val AUC: {val_auc:.4f}')
         
         self.scheduler.step(val_loss)
         
-        return train_accuracy, val_accuracy, avg_train_loss, val_loss    
+        return train_accuracy, val_accuracy, avg_train_loss, val_loss, val_auc
+
 
     def validate(self, val_loader):
         self.model.eval()
         val_loss = 0.0
-        val_correct = 0
-        val_total = 0
+        all_targets = []
+        all_outputs = []
         
         with torch.no_grad():
             for data, targets in val_loader:
                 data, targets = data.to(self.config['device']), targets.float().to(self.config['device'])
-                outputs = self.model(data).squeeze(-1)  # Remove apenas a última dimensão
+                outputs = self.model(data).squeeze(-1)
                 loss = self.criterion(outputs, targets)
-                
-                predicted = torch.sigmoid(outputs) > 0.5
-                val_total += targets.size(0)
-                val_correct += (predicted == targets.bool()).sum().item()
                 val_loss += loss.item()
+
+                all_targets.extend(targets.cpu().numpy())
+                all_outputs.extend(torch.sigmoid(outputs).cpu().numpy())
         
-        val_accuracy = 100. * val_correct / val_total
+        # Cálculo das métricas
+        all_targets = np.array(all_targets)
+        all_outputs = np.array(all_outputs)
+        predicted = (all_outputs > 0.5).astype(int)
+
+        accuracy = accuracy_score(all_targets, predicted)
+        try:
+            auc = roc_auc_score(all_targets, all_outputs)
+        except:
+            auc = 0.5  # Caso uma das classes falte no batch
+        
         avg_val_loss = val_loss / len(val_loader)
         
-        return val_accuracy, avg_val_loss
+        return accuracy, avg_val_loss, auc
 
     def setup_finetuning(self):
         for param in self.model.parameters():
@@ -139,10 +149,19 @@ class TrainAndEvalWorker:
             train_fold_dataset = ROPSubset(train_fold_dataset, transform=rop_dataset.train_transformations, apply_clahe=True)
             val_fold_dataset = ROPSubset(val_fold_dataset, transform=rop_dataset.val_and_test_transformations, apply_clahe=True)
 
+            labels = [sample[1] for sample in train_fold_dataset]  # supondo (img, label, id)
+            class_sample_count = np.array([len(np.where(labels == t)[0]) for t in np.unique(labels)])
+            weight = 1. / class_sample_count
+            samples_weight = np.array([weight[int(t)] for t in labels])
+            samples_weight = torch.from_numpy(samples_weight).double()
+            print(f"Samples weight distribution: {samples_weight}")
+
+            sampler = WeightedRandomSampler(samples_weight, len(samples_weight))
             train_loader = DataLoader(
                 train_fold_dataset, 
                 batch_size=self.config.get('batch_size', 32),
                 shuffle=True,
+                # sampler=sampler,  # <- substitui shuffle=True
                 num_workers=4,
                 collate_fn=self.custom_collate_fn
             )
@@ -172,27 +191,27 @@ class TrainAndEvalWorker:
             
             for epoch in range(epochs):
                 print(f'\nEpoch {epoch+1}/{epochs}')
-                train_acc, val_acc, train_loss, val_loss = self.train_epoch(train_loader, val_loader)
+                train_acc, val_acc, train_loss, val_loss, val_auc = self.train_epoch(train_loader, val_loader)
                 
-                if val_acc > best_global_acc:
-                    best_global_acc = val_acc
+                # Usa AUC como critério principal
+                if val_auc > best_global_acc:
+                    best_global_acc = val_auc
                     best_model_state = self.model.state_dict().copy()
                     best_fold = fold + 1
-            
+                
                 fold_results.append({
                     'fold': fold+1,
-                    'best_val_accuracy': best_val_acc
+                    'best_val_auc': best_global_acc
                 })
-                
-                print(f'Fold {fold+1} completed. Best Val Accuracy: {best_val_acc:.2f}%')
+                print(f'Fold {fold+1} completed. Best Val AUC: {best_global_acc:.4f}')
         
         if best_model_state is not None:
             torch.save(best_model_state, 'saved_models/best_model_efficientNET.pth')
             print(f'\nBest model saved! Fold {best_fold}, Accuracy: {best_global_acc:.2f}%')
-        avg_accuracy = sum([r['best_val_accuracy'] for r in fold_results]) / len(fold_results)
+        avg_auc = sum([r['best_val_auc'] for r in fold_results]) / len(fold_results)
         print(f'\nCross-Validation Results:')
-        print(f'Average Accuracy: {avg_accuracy:.2f}%')
-        
+        print(f'Average AUC: {avg_auc:.4f}')
+
         return fold_results
 
     def evaluate(self, test_dataset, model_path=None):
@@ -282,3 +301,35 @@ class TrainAndEvalWorker:
         
         return results
 
+class BinaryFocalLoss(nn.Module):
+    """
+    Implementação da Binary Focal Loss com suporte a logits.
+    """
+    def __init__(self, alpha=0.25, gamma=2.0, reduction='mean'):
+        super(BinaryFocalLoss, self).__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+        self.reduction = reduction
+
+    def forward(self, inputs, targets):
+        """
+        Args:
+            inputs: logits (saída bruta da rede antes do sigmoid)
+            targets: rótulos binários (0 ou 1)
+        """
+        # Sigmoid e cálculo da BCE
+        bce_loss = F.binary_cross_entropy_with_logits(inputs, targets, reduction='none')
+        probs = torch.sigmoid(inputs)
+        p_t = probs * targets + (1 - probs) * (1 - targets)
+
+        # Fator focal
+        focal_factor = (1 - p_t) ** self.gamma
+        loss = self.alpha * focal_factor * bce_loss
+
+        # Redução final
+        if self.reduction == 'mean':
+            return loss.mean()
+        elif self.reduction == 'sum':
+            return loss.sum()
+        else:
+            return loss
