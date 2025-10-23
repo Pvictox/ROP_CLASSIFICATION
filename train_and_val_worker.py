@@ -18,10 +18,10 @@ class TrainAndEvalWorker:
         if not config:
             print("Configuração vazia fornecida. Utilizando valores padrão.")
             self.config = {
-                'learning_rate': 1e-5,
+                'learning_rate': 1e-3,
                 'weight_decay': 1e-4,
-                'batch_size': 16,
-                'num_epochs': 30,
+                'batch_size': 64,
+                'num_epochs': 20,
                 'device': 'cuda' if torch.cuda.is_available() else 'cpu',
             }
         else:
@@ -138,8 +138,8 @@ class TrainAndEvalWorker:
 
 
     def train(self, X_train, y_train, patient_ids_train, train_index, gkf:GroupKFold, rop_dataset):
-        if self.model:
-            self.setup_finetuning()
+        # if self.model:
+        #     self.setup_finetuning()
         fold_results = []
         # usar AUC como métrica principal global
         best_global_auc = 0.0
@@ -201,7 +201,7 @@ class TrainAndEvalWorker:
             # track best threshold for this fold (associated to best val AUC in the fold)
             best_val_auc = 0.0
             best_threshold_fold = 0.5
-            epochs = self.config.get('num_epochs', 50)
+            epochs = self.config.get('num_epochs', 20)
             
             for epoch in range(epochs):
                 print(f'\nEpoch {epoch+1}/{epochs}')
@@ -283,13 +283,14 @@ class TrainAndEvalWorker:
                 
                 probs = torch.sigmoid(outputs)
                 # usa threshold médio calculado durante o treino, se disponível
-                threshold = getattr(self, 'avg_threshold', 0.5)
+                # threshold = getattr(self, 'avg_threshold', 0.5)
+                threshold = 0.5
                 predicted = (probs > threshold).float() 
                 
                 all_predictions.extend(predicted.cpu().numpy())
                 all_targets.extend(targets.cpu().numpy())
                 all_probs.extend(probs.cpu().numpy())
-    
+
         all_predictions = np.array(all_predictions).astype(int) 
         all_targets = np.array(all_targets).astype(int)
         all_probs = np.array(all_probs)
@@ -335,6 +336,8 @@ class TrainAndEvalWorker:
             # 'confusion_matrix': conf_matrix,
             
         }
+        # mostrando resultados com threshold padrão 0.5 também
+        # threshold
 
         #salvando results
         pd.DataFrame(results, index=[0]).to_csv('test_results.csv')
