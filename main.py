@@ -22,7 +22,7 @@ def main():
         print(f"Número total de imagens processadas: {len(df)}")        
         rop_dataset = ROPDataset(df, is_train=False, apply_clahe=True)
         # X_train, y_train, train_indx, patient_ids_train, gkf, test_dataset = data_factory.prepare_data_for_cross_validation(rop_dataset)
-        X_train, y_train, train_indx, patient_ids_train, gkf, test_dataset = data_factory.prepare_data_for_cross_validation_3(rop_dataset)
+        X_train, y_train, train_indx, patient_ids_train, gkf, test_dataset = data_factory.prepare_data_for_cross_validation_3(rop_dataset, num_splits=5)
 
         train_and_val_worker = TrainAndEvalWorker(config=None)
         print("Iniciando o treinamento e validação com GroupKFold...")

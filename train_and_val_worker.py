@@ -5,12 +5,13 @@ import numpy as np
 from data_factory.ROP_SUBSET_dataset import ROPSubset
 import torch
 import torch.nn as nn
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, roc_auc_score, roc_curve
+from sklearn.metrics import ConfusionMatrixDisplay, accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, roc_auc_score, roc_curve
 import torch.optim as optim
 import timm
 from torchvision import transforms
 from torch.utils.data import WeightedRandomSampler
-
+import os
+import matplotlib.pyplot as plt
 import torch.nn.functional as F
 
 class TrainAndEvalWorker:
@@ -203,9 +204,17 @@ class TrainAndEvalWorker:
             best_threshold_fold = 0.5
             epochs = self.config.get('num_epochs', 20)
             
+            # guardar o loss
+            train_losses = []
+            val_losses = []
+
             for epoch in range(epochs):
                 print(f'\nEpoch {epoch+1}/{epochs}')
                 train_acc, train_loss, val_loss, val_auc, val_threshold = self.train_epoch(train_loader, val_loader)
+
+                # guardar o loss
+                train_losses.append(train_loss)
+                val_losses.append(val_loss)
 
                 # atualizar melhor threshold do fold quando melhora a métrica de validação (AUC)
                 if val_auc > best_val_auc:
@@ -224,6 +233,19 @@ class TrainAndEvalWorker:
             # ao final do fold, armazenar o threshold ótimo encontrado para este fold
             best_thresholds_per_fold.append(best_threshold_fold)
             print(f"Fold {fold+1} best threshold: {best_threshold_fold:.4f} (best val AUC in fold: {best_val_auc:.4f})")
+           
+            # salvar curva de loss por fold
+            os.makedirs("saved_models/plot", exist_ok=True)
+            plt.figure()
+            plt.plot(train_losses, label="Train Loss")
+            plt.plot(val_losses, label="Val Loss")
+            plt.xlabel("Epoch")
+            plt.ylabel("Loss")
+            plt.title(f"Fold {fold+1} - Loss Curves")
+            plt.legend()
+            plt.grid(True)
+            plt.savefig(f"saved_models/plot/fold_{fold+1}_loss_curve.png")
+            plt.close()
             # registrar resultado resumido do fold
             fold_results.append({
                 'fold': fold+1,
@@ -325,7 +347,15 @@ class TrainAndEvalWorker:
         print(f"\nConfusion Matrix:")
         print(conf_matrix)
         print(f"{'='*50}")
-        
+
+        # salvar matriz de confusão como imagem
+        os.makedirs("saved_models/plot", exist_ok=True)
+        disp = ConfusionMatrixDisplay(conf_matrix)
+        disp.plot(cmap='Blues')
+        plt.title("Confusion Matrix - Test Set")
+        plt.savefig("saved_models/plot/test_confusion_matrix.png")
+        plt.close()
+        ####
         results = {
             'test_loss': avg_test_loss,
             'accuracy': accuracy,
