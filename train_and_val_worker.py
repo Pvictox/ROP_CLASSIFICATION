@@ -13,22 +13,24 @@ from torch.utils.data import WeightedRandomSampler
 import os
 import matplotlib.pyplot as plt
 import torch.nn.functional as F
+import optuna
+from models.dynamic_efficient_net import DynamicEfficientNet
 
 class TrainAndEvalWorker:
-    def __init__(self, config:dict):
+    def __init__(self, config:dict, model=None):
         if not config:
             print("Configuração vazia fornecida. Utilizando valores padrão.")
             self.config = {
                 'learning_rate': 1e-3,
                 'weight_decay': 1e-4,
-                'batch_size': 64,
-                'num_epochs': 20,
-                'device': 'cuda' if torch.cuda.is_available() else 'cpu',
+                'batch_size': 32,
+                'num_epochs': 10,
+                'device': 'cuda:1' if torch.cuda.is_available() else 'cpu',
             }
         else:
             self.config = config
-        
-        self.model = timm.create_model('efficientnet_b0', pretrained=True, num_classes=1).to(self.config['device'])
+
+        self.model = model if model else timm.create_model('efficientnet_b0', pretrained=True, num_classes=1).to(self.config['device'])
         self.optimizer = optim.AdamW(
             self.model.parameters(),
             lr=self.config.get('learning_rate', 1e-4),
@@ -138,7 +140,9 @@ class TrainAndEvalWorker:
 
 
 
-    def train(self, X_train, y_train, patient_ids_train, train_index, gkf:GroupKFold, rop_dataset):
+    def train(self, X_train, y_train, patient_ids_train, train_index, gkf:GroupKFold, rop_dataset, trial, dynamic_config=None):
+        #self.model = model.to(self.config['device'])
+
         # if self.model:
         #     self.setup_finetuning()
         fold_results = []
@@ -187,11 +191,7 @@ class TrainAndEvalWorker:
             )
 
             #PARA CADA FOLD TEM QUE REINICIAR O MODELO E OTIMIZADOR
-            self.model = timm.create_model(
-                'efficientnet_b0',
-                pretrained=True,
-                num_classes=1
-            ).to(self.config['device'])
+            self.model = DynamicEfficientNet(dynamic_config).to(self.config['device'])
             
             self.optimizer = optim.AdamW(
                 self.model.parameters(),
@@ -230,12 +230,17 @@ class TrainAndEvalWorker:
                 # (não registramos o fold_results aqui — registramos somente ao final do fold)
                 print(f'Epoch finished. Current fold best Val AUC: {best_val_auc:.4f}, Global best AUC: {best_global_auc:.4f}')
             
+            trial.report(best_val_auc, fold)
+            if trial.should_prune():
+                raise optuna.TrialPruned()
+            
+
             # ao final do fold, armazenar o threshold ótimo encontrado para este fold
             best_thresholds_per_fold.append(best_threshold_fold)
             print(f"Fold {fold+1} best threshold: {best_threshold_fold:.4f} (best val AUC in fold: {best_val_auc:.4f})")
            
             # salvar curva de loss por fold
-            os.makedirs("saved_models/plot", exist_ok=True)
+            os.makedirs(f"saved_models/plot/trial{trial.number}", exist_ok=True)
             plt.figure()
             plt.plot(train_losses, label="Train Loss")
             plt.plot(val_losses, label="Val Loss")
@@ -244,7 +249,7 @@ class TrainAndEvalWorker:
             plt.title(f"Fold {fold+1} - Loss Curves")
             plt.legend()
             plt.grid(True)
-            plt.savefig(f"saved_models/plot/fold_{fold+1}_loss_curve.png")
+            plt.savefig(f"saved_models/plot/trial{trial.number}/fold_{fold+1}_loss_curve.png")
             plt.close()
             # registrar resultado resumido do fold
             fold_results.append({
@@ -253,6 +258,7 @@ class TrainAndEvalWorker:
                 'best_threshold': float(best_threshold_fold)
             })
         
+        print(f"Trial {trial.number}: Achieved best AUC: {best_global_auc:.4f} at fold {best_fold}")
         # calcula média dos thresholds ótimos por fold e guarda em self (usado depois em evaluate)
         if len(best_thresholds_per_fold) > 0:
             self.avg_threshold = float(np.mean(best_thresholds_per_fold))
@@ -265,13 +271,13 @@ class TrainAndEvalWorker:
                 pass
 
         if best_model_state is not None:
-            torch.save(best_model_state, 'saved_models/best_model_efficientNET.pth')
+            torch.save(best_model_state, f'saved_models/trial{trial.number}_best_model_efficientNET.pth')
             print(f'\nBest model saved! Fold {best_fold}, Best AUC: {best_global_auc:.4f}')
         avg_auc = sum([r['best_val_auc'] for r in fold_results]) / len(fold_results)
         print(f'\nCross-Validation Results:')
         print(f'Average AUC: {avg_auc:.4f}')
 
-        return fold_results
+        return fold_results, avg_auc
 
     def evaluate(self, test_dataset, model_path=None):
         if model_path:
