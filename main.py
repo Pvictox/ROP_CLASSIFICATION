@@ -47,6 +47,9 @@ def main():
 
         #Salvando melhor arquitetura em um arquivo de texto
         with open('best_architecture.txt', 'w') as f:
+            f.write(f"Melhor trial: {study.best_trial.number}\n")
+            f.write(f"Melhor Acurácia de Validação: {study.best_value:.4f}\n")
+            f.write("\nMelhor Arquitetura Encontrada:\n")
             for key, value in study.best_params.items():
                 f.write(f"{key}: {value}\n")
         # train_and_val_worker = TrainAndEvalWorker(config=None)
