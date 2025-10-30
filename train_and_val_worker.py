@@ -270,9 +270,9 @@ class TrainAndEvalWorker:
             except Exception:
                 pass
 
-        if best_model_state is not None:
-            torch.save(best_model_state, f'saved_models/trial{trial.number}_best_model_efficientNET.pth')
-            print(f'\nBest model saved! Fold {best_fold}, Best AUC: {best_global_auc:.4f}')
+        # if best_model_state is not None:
+        #     torch.save(best_model_state, f'saved_models/trial{trial.number}_best_model_efficientNET.pth')
+        #     print(f'\nBest model saved! Fold {best_fold}, Best AUC: {best_global_auc:.4f}')
         avg_auc = sum([r['best_val_auc'] for r in fold_results]) / len(fold_results)
         print(f'\nCross-Validation Results:')
         print(f'Average AUC: {avg_auc:.4f}')

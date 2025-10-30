@@ -14,7 +14,16 @@ class OptunaTrials:
             (112, 192, 4, 2), # Estágio 6
             (192, 320, 1, 1), # Estágio 7
         ]
-        
+
+        self.best_model = None
+        self.best_auc = 0.0
+    
+    def save_best_model(self, path='saved_models/best_dynamic_efficientnet.pth'):
+        if self.best_model is not None:
+            torch.save(self.best_model.state_dict(), path)
+            print(f"Melhor modelo salvo em {path}")
+        else:
+            print("Nenhum modelo para salvar.")
     
     def objective(self, trial, X_train, y_train, patient_ids_train, train_indx, gkf, rop_dataset):
         device = 'cuda:1' if torch.cuda.is_available() else 'cpu'
@@ -56,5 +65,8 @@ class OptunaTrials:
             print(f"Trial {trial.number} falhou com erro: {e}")
             return -1.0 # Retorna uma acurácia muito ruim
 
+        if avg_auc > self.best_auc:
+            self.best_auc = avg_auc
+            self.best_model = model
         return avg_auc
         

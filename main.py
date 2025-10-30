@@ -37,6 +37,7 @@ def main():
         except KeyboardInterrupt:
             print("Otimização interrompida pelo usuário.")
 
+        optuna_trials.save_best_model()
         print("\n--- Otimização Concluída ---")
         print(f"Melhor trial: {study.best_trial.number}")
         print(f"Melhor Acurácia de Validação: {study.best_value:.4f}")
