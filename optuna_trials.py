@@ -17,6 +17,7 @@ class OptunaTrials:
 
         self.best_model = None
         self.best_auc = 0.0
+        self.worker = TrainAndEvalWorker(config=None)
     
     def save_best_model(self, path='saved_models/best_dynamic_efficientnet.pth'):
         if self.best_model is not None:
@@ -60,7 +61,9 @@ class OptunaTrials:
 
         model = DynamicEfficientNet(dynamic_config).to(device)
         try:
-            folds_results, avg_auc = TrainAndEvalWorker(config=None, model=model).train(X_train, y_train, patient_ids_train, train_indx, gkf, rop_dataset, trial, dynamic_config=dynamic_config)
+            # folds_results, avg_auc = TrainAndEvalWorker(config=None, model=model).train(X_train, y_train, patient_ids_train, train_indx, gkf, rop_dataset, trial, dynamic_config=dynamic_config)
+            self.worker.model = model
+            folds_results, avg_auc = self.worker.train(X_train, y_train, patient_ids_train, train_indx, gkf, rop_dataset, trial, dynamic_config=dynamic_config)
         except Exception as e:
             print(f"Trial {trial.number} falhou com erro: {e}")
             return -1.0 # Retorna uma acurácia muito ruim

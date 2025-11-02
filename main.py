@@ -11,8 +11,12 @@ import optuna
 from optuna_trials import OptunaTrials
 
 
-IMG_FILE_PATH = '/home/pedro_fonseca/PATIENT_ROP/DATASET'
-CSV_FILE_PATH = '/home/pedro_fonseca/PATIENT_ROP/DATASET/infant_retinal_database_info.csv'
+# IMG_FILE_PATH = '/home/pedro_fonseca/PATIENT_ROP/DATASET'
+# CSV_FILE_PATH = '/home/pedro_fonseca/PATIENT_ROP/DATASET/infant_retinal_database_info.csv'
+
+IMG_FILE_PATH = '/backup/lucas/rop_dataset/images_stack_without_captions/images_stack_without_captions'
+CSV_FILE_PATH = '/backup/lucas/rop_dataset/infant_retinal_database_info.csv'
+
 
 IS_INTERACTIVE = True #Isto é uma flag para indicar se o código está sendo executado em um ambiente interativo (como Jupyter Notebook) ou não.
 
@@ -26,7 +30,7 @@ def main():
         print(f"Número total de imagens processadas: {len(df)}")        
         rop_dataset = ROPDataset(df, is_train=False, apply_clahe=True)
         # X_train, y_train, train_indx, patient_ids_train, gkf, test_dataset = data_factory.prepare_data_for_cross_validation(rop_dataset)
-        X_train, y_train, train_indx, patient_ids_train, gkf, test_dataset = data_factory.prepare_data_for_cross_validation_3(rop_dataset, num_splits=5)
+        X_train, y_train, train_indx, patient_ids_train, gkf, test_dataset = data_factory.prepare_data_for_cross_validation_3(rop_dataset, num_splits=3)
 
         pruner = optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=0, interval_steps=1)
         study = optuna.create_study(direction='maximize', pruner=pruner)
@@ -53,6 +57,10 @@ def main():
             f.write("\nMelhor Arquitetura Encontrada:\n")
             for key, value in study.best_params.items():
                 f.write(f"{key}: {value}\n")
+        # Avaliacao com ensemble dos melhores modelos do melhor trial
+        print("\nIniciando a avaliação no conjunto de teste com o melhor modelo encontrado...")
+        results = optuna_trials.worker.evaluate_ensemble(test_dataset)
+
         # train_and_val_worker = TrainAndEvalWorker(config=None)
         # print("Iniciando o treinamento e validação com GroupKFold...")
         # train_and_val_worker.train(X_train, y_train, patient_ids_train, train_indx, gkf, rop_dataset)
