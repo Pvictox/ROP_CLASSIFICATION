@@ -6,9 +6,16 @@ from utils import Utils
 from data_factory.ROP_dataset import ROPDataset
 from train_and_val_worker import TrainAndEvalWorker
 import os
-
+from optuna.integration.wandb import WeightsAndBiasesCallback
 import optuna
 from optuna_trials import OptunaTrials
+import wandb
+from dotenv import load_dotenv
+
+# importar dot env
+
+load_dotenv()
+db_url = os.getenv("DB_URL")
 
 
 # IMG_FILE_PATH = '/home/pedro_fonseca/PATIENT_ROP/DATASET'
@@ -19,6 +26,7 @@ CSV_FILE_PATH = '/backup/lucas/rop_dataset/infant_retinal_database_info.csv'
 
 
 IS_INTERACTIVE = True #Isto é uma flag para indicar se o código está sendo executado em um ambiente interativo (como Jupyter Notebook) ou não.
+DB_URL = db_url
 
 os.makedirs('saved_models', exist_ok=True)
 def main():
@@ -30,14 +38,26 @@ def main():
         print(f"Número total de imagens processadas: {len(df)}")        
         rop_dataset = ROPDataset(df, is_train=False, apply_clahe=True)
         # X_train, y_train, train_indx, patient_ids_train, gkf, test_dataset = data_factory.prepare_data_for_cross_validation(rop_dataset)
-        X_train, y_train, train_indx, patient_ids_train, gkf, test_dataset = data_factory.prepare_data_for_cross_validation_3(rop_dataset, num_splits=3)
+        X_train, y_train, train_indx, patient_ids_train, gkf, test_dataset = data_factory.prepare_data_for_cross_validation_3(rop_dataset, num_splits=5)
 
         pruner = optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=0, interval_steps=1)
-        study = optuna.create_study(direction='maximize', pruner=pruner)
+        study = optuna.create_study(
+            study_name='dynamic_efficientnet_optimization_v1',
+            storage=DB_URL,
+            load_if_exists=True,
+            direction='maximize',
+            pruner=pruner)
         optuna_trials = OptunaTrials()
-        N_TRIALS = 2 
+        wandb.init(project="dynamic_efficientnet_optimization_v1", name="run_otimizacao")
+
+        wandb_callback = WeightsAndBiasesCallback(
+        metric_name="avg_auc",
+        )
+
+        N_TRIALS = 50 
         try:
-            study.optimize(lambda trial: optuna_trials.objective(trial, X_train, y_train, patient_ids_train, train_indx, gkf, rop_dataset), n_trials=N_TRIALS)
+            study.optimize(lambda trial: optuna_trials.objective(trial, X_train, y_train, patient_ids_train, train_indx, gkf, rop_dataset),
+                            n_trials=N_TRIALS, callbacks=[wandb_callback])
         except KeyboardInterrupt:
             print("Otimização interrompida pelo usuário.")
 

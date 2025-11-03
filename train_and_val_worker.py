@@ -25,7 +25,7 @@ class TrainAndEvalWorker:
                 'learning_rate': 1e-3,
                 'weight_decay': 1e-4,
                 'batch_size': 32,
-                'num_epochs': 3,
+                'num_epochs': 15,
                 'device': 'cuda:1' if torch.cuda.is_available() else 'cpu',
             }
         else:
@@ -490,7 +490,7 @@ class TrainAndEvalWorker:
             with torch.no_grad():
                 for data, targets in test_loader:
                     data, targets = data.to(self.config['device']), targets.float().to(self.config['device'])
-                    outputs = self.model(data).squeeze(-1)
+                    outputs = fold_model(data).squeeze(-1)
                     probs = torch.sigmoid(outputs)
                     predicted = (probs > 0.5).float()
 
