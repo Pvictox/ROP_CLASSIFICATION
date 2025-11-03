@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader, Subset
 from sklearn.model_selection import GroupShuffleSplit, GroupKFold, train_test_split
 import numpy as np
 from data_factory.ROP_dataset import ROPDataset
+from data_factory.ROP_SUBSET_dataset import ROPSubset
 
 class DataFactory:
     def __init__(self, img_path, metadata_path):
@@ -268,3 +269,52 @@ class DataFactory:
         patient_ids_train = train_df['patient_id'].values
 
         return X_train, y_train, train_indx, patient_ids_train, gkf, test_dataset
+
+    def prepare_train_val_and_test_datasets(self, rop_dataset:ROPDataset, test_size=0.2, val_size=0.15, random_state=42, verbose=True):
+        
+        df = rop_dataset.dataframe.copy()
+        
+        patient_class = df.groupby('patient_id')['binary_label'].mean().reset_index()
+        patient_class['label_class'] = (patient_class['binary_label'] > 0.5).astype(int)
+        
+        train_val_patients, test_patients = train_test_split(
+            patient_class['patient_id'],
+            test_size=test_size,
+            stratify=patient_class['label_class'],
+            random_state=random_state
+        )
+        
+        train_val_class = patient_class[patient_class['patient_id'].isin(train_val_patients)]
+        
+        train_patients, val_patients = train_test_split(
+            train_val_class['patient_id'],
+            test_size=val_size,
+            stratify=train_val_class['label_class'],
+            random_state=random_state
+        )
+        
+        train_df = df[df['patient_id'].isin(train_patients)]
+        val_df = df[df['patient_id'].isin(val_patients)]
+        test_df = df[df['patient_id'].isin(test_patients)]
+        
+        if verbose:
+            print("=== Split Treino/Validação/Teste ===")
+            print(f"Pacientes treino: {len(train_patients)} | Pacientes validação: {len(val_patients)} | Pacientes teste: {len(test_patients)}")
+            print(f"Imagens treino: {len(train_df)} | Imagens validação: {len(val_df)} | Imagens teste: {len(test_df)}")
+            print("\nDistribuição de classes:")
+            print("Treino:", Counter(train_df['binary_label']))
+            print("Validação:", Counter(val_df['binary_label']))
+            print("Teste:", Counter(test_df['binary_label']))
+        
+        # Obter índices originais para criar os Subsets
+        train_indx = np.array(df.index[df['patient_id'].isin(train_patients)].tolist())
+        val_indx = np.array(df.index[df['patient_id'].isin(val_patients)].tolist())
+        test_indx = np.array(df.index[df['patient_id'].isin(test_patients)].tolist())
+        
+        # Criar os Subsets
+        train_dataset = Subset(rop_dataset, train_indx)
+        val_dataset = Subset(rop_dataset, val_indx)
+        test_dataset = Subset(rop_dataset, test_indx)
+
+        return ROPSubset(train_dataset), ROPSubset(val_dataset), ROPSubset(test_dataset)
+

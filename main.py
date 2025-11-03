@@ -9,6 +9,12 @@ import os
 
 import optuna
 from optuna_trials import OptunaTrials
+from dotenv import load_dotenv
+
+load_dotenv()
+
+db_url = os.getenv('DB_URL')
+
 
 
 IMG_FILE_PATH = '/home/pedro_fonseca/PATIENT_ROP/DATASET'
@@ -28,16 +34,19 @@ def main():
         # X_train, y_train, train_indx, patient_ids_train, gkf, test_dataset = data_factory.prepare_data_for_cross_validation(rop_dataset)
         X_train, y_train, train_indx, patient_ids_train, gkf, test_dataset = data_factory.prepare_data_for_cross_validation_3(rop_dataset, num_splits=5)
 
+        train_full_subset, val_full_subset, test_subset = data_factory.prepare_train_val_and_test_datasets(rop_dataset)
+
         pruner = optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=0, interval_steps=1)
-        study = optuna.create_study(direction='maximize', pruner=pruner)
+        study = optuna.create_study(direction='maximize', pruner=pruner, study_name='dynamic_efficientnet_optimization', storage=db_url, load_if_exists=True
+                    )
         optuna_trials = OptunaTrials()
         N_TRIALS = 2 
         try:
-            study.optimize(lambda trial: optuna_trials.objective(trial, X_train, y_train, patient_ids_train, train_indx, gkf, rop_dataset), n_trials=N_TRIALS)
+            study.optimize(lambda trial: optuna_trials.objective(trial, X_train, y_train, patient_ids_train, train_indx, gkf, rop_dataset, num_trials=N_TRIALS, full_train_subset=train_full_subset, full_val_subset=val_full_subset, test_subset=test_subset), n_trials=N_TRIALS)
         except KeyboardInterrupt:
             print("Otimização interrompida pelo usuário.")
 
-        optuna_trials.save_best_model()
+        #optuna_trials.save_best_model()
         print("\n--- Otimização Concluída ---")
         print(f"Melhor trial: {study.best_trial.number}")
         print(f"Melhor Acurácia de Validação: {study.best_value:.4f}")

@@ -18,19 +18,25 @@ class OptunaTrials:
         self.best_model = None
         self.best_auc = 0.0
     
-    def save_best_model(self, path='saved_models/best_dynamic_efficientnet.pth'):
+    def save_best_model(self, path='saved_models/best_dynamic_efficientnet.pth', trial_number=0):
+        path = f'saved_models/best_dynamic_efficientnet_trial_{trial_number}.pth'
         if self.best_model is not None:
             torch.save(self.best_model.state_dict(), path)
             print(f"Melhor modelo salvo em {path}")
         else:
             print("Nenhum modelo para salvar.")
     
-    def objective(self, trial, X_train, y_train, patient_ids_train, train_indx, gkf, rop_dataset):
+    def objective(self, trial, X_train, y_train, patient_ids_train, train_indx, gkf, rop_dataset, num_trials, full_train_subset, full_val_subset, test_subset):
         device = 'cuda:1' if torch.cuda.is_available() else 'cpu'
         dynamic_config = [] #Para salvar as config
 
         MAX_STAGE_FOR_ATT = 3
-        
+        should_save_model = False
+
+        #Só irá salvar o modelo localmente a cada num_trials/2 trials. Então no final do estudo nós teremos apenas 2 modelos salvos localmente.
+        if trial.number % (num_trials // 2) == 0:
+            should_save_model = True
+
         for i, (in_c, out_c, n_layers, stride) in enumerate(self.base_state_config):
             cfg = {}
             
@@ -60,13 +66,26 @@ class OptunaTrials:
 
         model = DynamicEfficientNet(dynamic_config).to(device)
         try:
-            folds_results, avg_auc = TrainAndEvalWorker(config=None, model=model).train(X_train, y_train, patient_ids_train, train_indx, gkf, rop_dataset, trial, dynamic_config=dynamic_config)
+            worker = TrainAndEvalWorker(config=None, model=model)
+            results = worker.train(X_train, y_train, patient_ids_train, train_indx, gkf, rop_dataset, trial, dynamic_config=dynamic_config, full_train_subset=full_train_subset, full_val_subset=full_val_subset, test_subset=test_subset)
+            print("Avaliação no conjunto de teste...")
+            worker.evaluate(test_subset, model=model, trial_number=trial.number)  # Avaliação no conjunto de teste
+
+            avg_auc = results['best_val_auc']
+            avg_f1 = results['best_val_f1']
+            
+
         except Exception as e:
             print(f"Trial {trial.number} falhou com erro: {e}")
             return -1.0 # Retorna uma acurácia muito ruim
 
         if avg_auc > self.best_auc:
             self.best_auc = avg_auc
-            self.best_model = model
+            self.best_model = results['model']
+        
+        if should_save_model:
+            self.save_best_model(trial_number=trial.number)
+
+
         return avg_auc
         
