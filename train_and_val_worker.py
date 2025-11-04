@@ -132,17 +132,23 @@ class TrainAndEvalWorker:
         
 
     def custom_collate_fn(self, batch):
-        transform = transforms.ToTensor()
-        
         images = []
         labels = []
         
         for item in batch:
             if len(item) == 3:  # (image, label, patient_id)
                 image, label, patient_id = item
-                if hasattr(image, 'mode'):  # É uma PIL Image
+                
+                # Verificar se já é um tensor
+                if isinstance(image, torch.Tensor):
+                    images.append(image)
+                elif hasattr(image, 'mode'):  # É uma PIL Image
+                    transform = transforms.ToTensor()
                     image = transform(image)
-                images.append(image)
+                    images.append(image)
+                else:
+                    raise TypeError(f"Tipo de imagem não suportado: {type(image)}")
+                
                 labels.append(label)
         
         return torch.stack(images), torch.tensor(labels)
