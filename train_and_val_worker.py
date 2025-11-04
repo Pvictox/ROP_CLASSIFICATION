@@ -25,8 +25,9 @@ class TrainAndEvalWorker:
                 'learning_rate': 1e-3,
                 'weight_decay': 1e-4,
                 'batch_size': 32,
-                'num_epochs': 10,
-                'device': 'cuda:1' if torch.cuda.is_available() else 'cpu',
+                'num_epochs_cross': 20,
+                'num_epochs': 40,
+                'device': 'cuda:0' if torch.cuda.is_available() else 'cpu',
                 'patience': 5
             }
         else:
@@ -211,7 +212,7 @@ class TrainAndEvalWorker:
             best_val_auc = 0.0
             best_threshold_fold = 0.5
             best_fold_f1 = 0.0
-            epochs = self.config.get('num_epochs', 20)
+            epochs = self.config.get('num_epochs_cross', 20)
             
             # guardar o loss
             train_losses = []
