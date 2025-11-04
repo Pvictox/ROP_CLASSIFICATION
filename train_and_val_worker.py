@@ -25,8 +25,8 @@ class TrainAndEvalWorker:
                 'learning_rate': 1e-3,
                 'weight_decay': 1e-4,
                 'batch_size': 32,
-                'num_epochs_cross': 20,
-                'num_epochs': 40,
+                'num_epochs_cross': 10,
+                'num_epochs': 30,
                 'device': 'cuda:0' if torch.cuda.is_available() else 'cpu',
                 'patience': 5
             }
@@ -256,6 +256,11 @@ class TrainAndEvalWorker:
                 'best_f1_score': best_fold_f1,
                 'best_threshold': best_threshold_fold
             })
+
+        if trial is not None:
+            if trial.should_prune():
+                print("Trial pruned by Optuna during cross-validation.")
+                raise optuna.TrialPruned()
         
         # Calcular estatísticas finais
         mean_auc = np.mean(fold_aucs)
@@ -414,6 +419,7 @@ class TrainAndEvalWorker:
         #Salvando localmente
         os.makedirs(f"saved_models/complete_training/trial_{trial.number}", exist_ok=True)
         pd.DataFrame(results_training).to_csv(f"saved_models/complete_training/trial_{trial.number}/training_results.csv")
+        return results_training
         
 
     def evaluate(self, test_dataset, model, trial_number):
@@ -558,10 +564,10 @@ class TrainAndEvalWorker:
         axes[1, 1].grid(True)
         
         plt.tight_layout()
-        plt.savefig(f'saved_models/plots/training_curves/trial_{trial_number}/training_curves.png', dpi=300)
+        plt.savefig(f'saved_models/plot/training_curves/trial_{trial_number}/training_curves.png', dpi=300)
         plt.close()
 
-        print(f"✓ Curvas de treinamento salvas em: saved_models/plots/training_curves/trial_{trial_number}/training_curves.png")
+        print(f"✓ Curvas de treinamento salvas em: saved_models/plot/training_curves/trial_{trial_number}/training_curves.png")
 
 class BinaryFocalLoss(nn.Module):
     """

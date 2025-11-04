@@ -32,15 +32,15 @@ def main():
         print(f"Número total de imagens processadas: {len(df)}")        
         rop_dataset = ROPDataset(df, is_train=False, apply_clahe=True)
         # X_train, y_train, train_indx, patient_ids_train, gkf, test_dataset = data_factory.prepare_data_for_cross_validation(rop_dataset)
-        X_train, y_train, train_indx, patient_ids_train, gkf, test_dataset = data_factory.prepare_data_for_cross_validation_3(rop_dataset, num_splits=5)
+        X_train, y_train, train_indx, patient_ids_train, gkf, test_dataset = data_factory.prepare_data_for_cross_validation_3(rop_dataset, num_splits=3)
 
         train_full_subset, val_full_subset, test_subset = data_factory.prepare_train_val_and_test_datasets(rop_dataset)
 
         pruner = optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=0, interval_steps=1)
-        study = optuna.create_study(direction='maximize', pruner=pruner, study_name='dynamic_efficientnet_optimization', storage=db_url, load_if_exists=True
+        study = optuna.create_study(direction='maximize', pruner=pruner, study_name='dynamic_efficientnet_optimization_trials_pedro', storage=db_url, load_if_exists=True
                     )
         optuna_trials = OptunaTrials()
-        N_TRIALS = 2 
+        N_TRIALS = 50
         try:
             study.optimize(lambda trial: optuna_trials.objective(trial, X_train, y_train, patient_ids_train, train_indx, gkf, rop_dataset, num_trials=N_TRIALS, full_train_subset=train_full_subset, full_val_subset=val_full_subset, test_subset=test_subset), n_trials=N_TRIALS)
         except KeyboardInterrupt:

@@ -27,7 +27,7 @@ class OptunaTrials:
             print("Nenhum modelo para salvar.")
     
     def objective(self, trial, X_train, y_train, patient_ids_train, train_indx, gkf, rop_dataset, num_trials, full_train_subset, full_val_subset, test_subset):
-        device = 'cuda:1' if torch.cuda.is_available() else 'cpu'
+        device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
         dynamic_config = [] #Para salvar as config
 
         MAX_STAGE_FOR_ATT = 3
@@ -87,5 +87,5 @@ class OptunaTrials:
             self.save_best_model(trial_number=trial.number)
 
 
-        return avg_auc
+        return avg_auc, avg_f1
         
