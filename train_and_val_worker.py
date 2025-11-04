@@ -28,7 +28,7 @@ class TrainAndEvalWorker:
                 'num_epochs_cross': 10,
                 'num_epochs': 30,
                 'device': 'cuda:0' if torch.cuda.is_available() else 'cpu',
-                'patience': 5
+                'patience': 3
             }
         else:
             self.config = config
@@ -156,20 +156,18 @@ class TrainAndEvalWorker:
 
     def train_cross_validation(self, X_train, y_train, patient_ids_train, train_index, gkf:GroupKFold, rop_dataset, trial, dynamic_config=None):
         fold_results = []
-        # usar AUC como métrica principal global
         best_global_auc = 0.0
         best_model_state = None
         best_fold = 0
         best_thresholds_per_fold = []
         
-        # Listas para armazenar métricas de cada fold
         fold_aucs = []
         fold_f1_scores = []
         
         for fold, (train_fold_idx, val_fold_idx) in enumerate(gkf.split(X_train, y_train, groups=patient_ids_train)):
             fold_patience = 0
             print(f"{'='*20}")
-            print(f"Fold {fold+1}/{gkf.n_splits}") #type:ignore
+            print(f"Fold {fold+1}/{gkf.n_splits}")
             print(f"{'='*20}")
 
             train_fold_absolute_index = train_index[train_fold_idx]
@@ -181,7 +179,7 @@ class TrainAndEvalWorker:
             train_fold_dataset = ROPSubset(train_fold_dataset, transform=rop_dataset.train_transformations, apply_clahe=True)
             val_fold_dataset = ROPSubset(val_fold_dataset, transform=rop_dataset.val_and_test_transformations, apply_clahe=True)
 
-            labels = [sample[1] for sample in train_fold_dataset]  # supondo (img, label, id)
+            labels = [sample[1] for sample in train_fold_dataset]
             class_sample_count = np.array([len(np.where(labels == t)[0]) for t in np.unique(labels)])
             weight = 1. / class_sample_count
             samples_weight = np.array([weight[int(t)] for t in labels])
@@ -193,19 +191,18 @@ class TrainAndEvalWorker:
                 train_fold_dataset, 
                 batch_size=self.config.get('batch_size', 32),
                 shuffle=True,
-                # sampler=sampler,
-                num_workers=0,  # <- MUDAR DE 4 PARA 0
+                num_workers=0,
                 collate_fn=self.custom_collate_fn
             )
             val_loader = DataLoader(
                 val_fold_dataset,
                 batch_size=self.config.get('batch_size', 32),
                 shuffle=False,
-                num_workers=0,  # <- MUDAR DE 4 PARA 0
+                num_workers=0,
                 collate_fn=self.custom_collate_fn
             )
 
-            #PARA CADA FOLD TEM QUE REINICIAR O MODELO E OTIMIZADOR
+            # REINICIAR O MODELO E OTIMIZADOR PARA CADA FOLD
             self.model = DynamicEfficientNet(dynamic_config).to(self.config['device'])
             
             self.optimizer = optim.AdamW(
@@ -214,13 +211,11 @@ class TrainAndEvalWorker:
                 weight_decay=self.config.get('weight_decay', 1e-5)
             )
 
-            # track best threshold for this fold (associated to best val AUC in the fold)
             best_val_auc = 0.0
             best_threshold_fold = 0.5
             best_fold_f1 = 0.0
             epochs = self.config.get('num_epochs_cross', 20)
             
-            # guardar o loss
             train_losses = []
             val_losses = []
 
@@ -228,20 +223,21 @@ class TrainAndEvalWorker:
                 print(f'\nEpoch {epoch+1}/{epochs}')
                 train_acc, train_loss, val_loss, val_auc, val_threshold, val_f1 = self.train_epoch(train_loader, val_loader)
 
-                # guardar o loss
                 train_losses.append(train_loss)
                 val_losses.append(val_loss)
 
-                # Atualizar melhor threshold e F1 do fold quando melhora a métrica de validação (AUC)
+                # RESETAR PATIENCE QUANDO MELHORA
                 if val_auc > best_val_auc:
                     best_val_auc = val_auc
                     best_threshold_fold = val_threshold
                     best_fold_f1 = val_f1
+                    fold_patience = 0
                 else:
                     fold_patience += 1
                 
+                # REMOVER REPORT E PRUNING DAQUI - DEIXAR APENAS NO TREINO FINAL
+                
                 if fold_patience >= self.config.get('patience', 5):
-                    
                     print(f"Early stopping no fold {fold+1} na epoch {epoch+1}")
                     break
 
@@ -253,7 +249,6 @@ class TrainAndEvalWorker:
 
             print(f"Fold {fold+1} best threshold: {best_threshold_fold:.4f} (best val AUC: {best_val_auc:.4f}, best F1: {best_fold_f1:.4f})")
             
-            
             best_thresholds_per_fold.append(best_threshold_fold)
             
             fold_results.append({
@@ -262,13 +257,12 @@ class TrainAndEvalWorker:
                 'best_f1_score': best_fold_f1,
                 'best_threshold': best_threshold_fold
             })
-
-        if trial is not None:
-            if trial.should_prune():
-                print("Trial pruned by Optuna during cross-validation.")
-                raise optuna.TrialPruned()
-        
-        # Calcular estatísticas finais
+            
+            # Atualizar melhor fold globalmente
+            if best_val_auc > best_global_auc:
+                best_global_auc = best_val_auc
+                best_fold = fold + 1
+    
         mean_auc = np.mean(fold_aucs)
         std_auc = np.std(fold_aucs)
         mean_f1 = np.mean(fold_f1_scores)
@@ -284,8 +278,6 @@ class TrainAndEvalWorker:
         print(f"Threshold médio: {avg_threshold:.4f}")
         print(f"{'='*50}\n")
         
-       
-        # Armazenar threshold médio para uso posterior
         self.avg_threshold = avg_threshold
         
         # Salvar resultados detalhados
@@ -391,23 +383,25 @@ class TrainAndEvalWorker:
                 best_epoch = epoch + 1
                 best_threshold = val_threshold
                 best_val_f1 = val_f1
+                train_patience = 0 
                 print(f'Novo melhor modelo! Val AUC: {best_val_auc:.4f}, F1: {best_val_f1:.4f}')
             else:
                 train_patience += 1
             
+            if trial is not None:
+                trial.report(val_auc, epoch)
+                
+                # Verificar pruning
+                if trial.should_prune():
+                    print("Trial pruned by Optuna.")
+                    raise optuna.TrialPruned()
+        
             if train_patience >= self.config.get('patience', 5):
                 print(f"Early stopping na epoch {epoch+1}")
                 break
             
             print(f'Best Val AUC so far: {best_val_auc:.4f} (Epoch {best_epoch})')
-            
-            if trial is not None:
-                trial.report(val_auc, epoch)
-                if trial.should_prune():
-                    print("Trial pruned by Optuna.")
-                    raise optuna.TrialPruned()
-        
-        
+    
         self._plot_training_curves(train_history, trial_number = trial.number)
 
         # Retornar resultados completos
