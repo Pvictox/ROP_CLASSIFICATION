@@ -193,15 +193,15 @@ class TrainAndEvalWorker:
                 train_fold_dataset, 
                 batch_size=self.config.get('batch_size', 32),
                 shuffle=True,
-                # sampler=sampler,  # <- substitui shuffle=True
-                num_workers=4,
+                # sampler=sampler,
+                num_workers=0,  # <- MUDAR DE 4 PARA 0
                 collate_fn=self.custom_collate_fn
             )
             val_loader = DataLoader(
                 val_fold_dataset,
                 batch_size=self.config.get('batch_size', 32),
                 shuffle=False,
-                num_workers=4,
+                num_workers=0,  # <- MUDAR DE 4 PARA 0
                 collate_fn=self.custom_collate_fn
             )
 
@@ -324,21 +324,21 @@ class TrainAndEvalWorker:
             full_train_subset,
             batch_size=self.config.get('batch_size', 32),
             shuffle=True,
-            num_workers=4,
+            num_workers=0,
             collate_fn=self.custom_collate_fn
         )
         full_val_loader = DataLoader(
             full_val_subset,
             batch_size=self.config.get('batch_size', 32),
             shuffle=False,
-            num_workers=4,
+            num_workers=0,
             collate_fn=self.custom_collate_fn
         )
         test_loader = DataLoader(
             test_subset,
             batch_size=self.config.get('batch_size', 32),
             shuffle=False,
-            num_workers=4,
+            num_workers=0,
             collate_fn=self.custom_collate_fn
         )
         
@@ -435,7 +435,7 @@ class TrainAndEvalWorker:
             test_dataset,
             batch_size=self.config.get('batch_size', 32),
             shuffle=False,
-            num_workers=4,
+            num_workers=0,
             collate_fn=self.custom_collate_fn
         )
         
