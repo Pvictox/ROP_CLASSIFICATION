@@ -1,31 +1,35 @@
+Melhor trial: 0
+Melhor Acurácia de Validação: -1.0000
+
+Melhor Arquitetura Encontrada:
 stage_0_block: MBConv
-stage_0_kernel: 3
+stage_0_kernel: 5
 stage_0_expand: 6
-stage_0_attention: cbam
-stage_0_att_reduction: 8
-stage_1_block: FusedMBConv
-stage_1_kernel: 5
-stage_1_expand: 4
-stage_1_attention: cbam
-stage_1_att_reduction: 4
+stage_0_attention: se
+stage_0_att_reduction: 4
+stage_1_block: MBConv
+stage_1_kernel: 3
+stage_1_expand: 6
+stage_1_attention: none
 stage_2_block: MBConv
-stage_2_kernel: 5
+stage_2_kernel: 3
 stage_2_expand: 6
-stage_2_attention: none
-stage_3_block: FusedMBConv
-stage_3_kernel: 5
+stage_2_attention: se
+stage_2_att_reduction: 8
+stage_3_block: MBConv
+stage_3_kernel: 3
 stage_3_expand: 4
-stage_3_attention: se
-stage_3_att_reduction: 8
+stage_3_attention: cbam
+stage_3_att_reduction: 16
 stage_4_block: FusedMBConv
 stage_4_kernel: 5
 stage_4_expand: 6
-stage_4_attention: cbam
+stage_4_attention: none
 stage_5_block: FusedMBConv
-stage_5_kernel: 3
+stage_5_kernel: 5
 stage_5_expand: 6
-stage_5_attention: none
-stage_6_block: FusedMBConv
+stage_5_attention: cbam
+stage_6_block: MBConv
 stage_6_kernel: 5
 stage_6_expand: 4
-stage_6_attention: se
+stage_6_attention: cbam

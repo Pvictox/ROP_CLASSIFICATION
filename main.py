@@ -37,7 +37,7 @@ def main():
         train_full_subset, val_full_subset, test_subset = data_factory.prepare_train_val_and_test_datasets(rop_dataset)
 
         pruner = optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=0, interval_steps=1)
-        study = optuna.create_study(direction='maximize', pruner=pruner, study_name='dynamic_efficientnet_optimization_trials_pedro', storage=db_url, load_if_exists=True
+        study = optuna.create_study(direction='maximize', pruner=pruner, study_name='dynamic_efficientnet_optimization_trials_final', storage=db_url, load_if_exists=True
                     )
         optuna_trials = OptunaTrials()
         N_TRIALS = 50
