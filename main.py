@@ -36,7 +36,7 @@ def main():
         print(f"Número total de imagens processadas: {len(df)}")        
         rop_dataset = ROPDataset(df, is_train=False, apply_clahe=True)
         # X_train, y_train, train_indx, patient_ids_train, gkf, test_dataset = data_factory.prepare_data_for_cross_validation(rop_dataset)
-        X_train, y_train, train_indx, patient_ids_train, gkf, test_dataset = data_factory.prepare_data_for_cross_validation_3(rop_dataset, num_splits=2)
+        X_train, y_train, train_indx, patient_ids_train, gkf, test_dataset = data_factory.prepare_data_for_cross_validation_3(rop_dataset, num_splits=3)
 
         train_full_subset, val_full_subset, test_subset = data_factory.prepare_train_val_and_test_datasets(rop_dataset)
 
@@ -51,7 +51,7 @@ def main():
             print("Otimização interrompida pelo usuário.")
 
         worker = TrainAndEvalWorker(config=None, model=None)
-        results = worker.evaluate(test_subset, model_path='saved_models/best_dynamic_efficientnet.pth')
+        # results = worker.evaluate(test_subset, model_path='saved_models/best_dynamic_efficientnet.pth')
         #optuna_trials.save_best_model()
         print("\n--- Otimização Concluída ---")
         print(f"Melhor trial: {study.best_trial.number}")
