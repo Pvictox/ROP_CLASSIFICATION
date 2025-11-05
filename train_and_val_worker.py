@@ -25,8 +25,8 @@ class TrainAndEvalWorker:
                 'learning_rate': 1e-3,
                 'weight_decay': 1e-4,
                 'batch_size': 32,
-                'num_epochs_cross': 10,
-                'num_epochs': 30,
+                'num_epochs_cross': 25,
+                
                 'device': 'cuda:0' if torch.cuda.is_available() else 'cpu',
                 'patience': 3
             }
@@ -39,7 +39,6 @@ class TrainAndEvalWorker:
             lr=self.config.get('learning_rate', 1e-4),
             weight_decay=self.config.get('weight_decay', 1e-5)
         )
-        # self.criterion = nn.BCEWithLogitsLoss()
         self.criterion = BinaryFocalLoss(alpha=0.75, gamma=1.0)
         self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='min', factor=0.1, patience=5)
 
@@ -154,22 +153,43 @@ class TrainAndEvalWorker:
         return torch.stack(images), torch.tensor(labels)
 
 
-    def train_cross_validation(self, X_train, y_train, patient_ids_train, train_index, gkf:GroupKFold, rop_dataset, trial, dynamic_config=None):
+    def train(self, X_train, y_train, patient_ids_train, train_index, gkf:GroupKFold, rop_dataset, trial, test_subset:ROPSubset, dynamic_config=None):
+        '''
+        Realiza validação cruzada, avaliando cada fold no conjunto de teste.
+        Retorna a média do AUC - std para otimização com Optuna.
+        '''
+        
         fold_results = []
-        best_global_auc = 0.0
+        test_results_per_fold = []
+        best_global_test_auc = 0.0
         best_model_state = None
         best_fold = 0
         best_thresholds_per_fold = []
         
         fold_aucs = []
         fold_f1_scores = []
+        test_aucs = []
+        
+        # Preparar test_loader (fixo para todos os folds)
+        test_loader = DataLoader(
+            test_subset,
+            batch_size=self.config.get('batch_size', 32),
+            shuffle=False,
+            num_workers=0,
+            collate_fn=self.custom_collate_fn
+        )
+        
+        print("\n" + "="*50)
+        print("Iniciando Validação Cruzada com Avaliação no Teste")
+        print("="*50 + "\n")
         
         for fold, (train_fold_idx, val_fold_idx) in enumerate(gkf.split(X_train, y_train, groups=patient_ids_train)):
             fold_patience = 0
-            print(f"{'='*20}")
+            print(f"{'='*50}")
             print(f"Fold {fold+1}/{gkf.n_splits}")
-            print(f"{'='*20}")
+            print(f"{'='*50}")
 
+            # Preparar dados do fold
             train_fold_absolute_index = train_index[train_fold_idx]
             val_fold_absolute_index = train_index[val_fold_idx]
 
@@ -179,6 +199,7 @@ class TrainAndEvalWorker:
             train_fold_dataset = ROPSubset(train_fold_dataset, transform=rop_dataset.train_transformations, apply_clahe=True)
             val_fold_dataset = ROPSubset(val_fold_dataset, transform=rop_dataset.val_and_test_transformations, apply_clahe=True)
 
+            # Weighted sampler
             labels = [sample[1] for sample in train_fold_dataset]
             class_sample_count = np.array([len(np.where(labels == t)[0]) for t in np.unique(labels)])
             weight = 1. / class_sample_count
@@ -202,7 +223,7 @@ class TrainAndEvalWorker:
                 collate_fn=self.custom_collate_fn
             )
 
-            # REINICIAR O MODELO E OTIMIZADOR PARA CADA FOLD
+            # Reinicializar modelo e otimizador para cada fold
             self.model = DynamicEfficientNet(dynamic_config).to(self.config['device'])
             
             self.optimizer = optim.AdamW(
@@ -214,41 +235,72 @@ class TrainAndEvalWorker:
             best_val_auc = 0.0
             best_threshold_fold = 0.5
             best_fold_f1 = 0.0
+            best_fold_model_state = None
             epochs = self.config.get('num_epochs_cross', 20)
             
-            train_losses = []
-            val_losses = []
+            # Histórico para plotagem
+            fold_history = {
+                'train_loss': [],
+                'val_loss': [],
+                'train_acc': [],
+                'val_auc': [],
+                'val_f1': []
+            }
 
+            # Treinar o fold
             for epoch in range(epochs):
                 print(f'\nEpoch {epoch+1}/{epochs}')
                 train_acc, train_loss, val_loss, val_auc, val_threshold, val_f1 = self.train_epoch(train_loader, val_loader)
 
-                train_losses.append(train_loss)
-                val_losses.append(val_loss)
+                # Armazenar métricas no histórico
+                fold_history['train_loss'].append(train_loss)
+                fold_history['val_loss'].append(val_loss)
+                fold_history['train_acc'].append(train_acc)
+                fold_history['val_auc'].append(val_auc)
+                fold_history['val_f1'].append(val_f1)
 
-                # RESETAR PATIENCE QUANDO MELHORA
+                # Salvar melhor modelo do fold
                 if val_auc > best_val_auc:
                     best_val_auc = val_auc
                     best_threshold_fold = val_threshold
                     best_fold_f1 = val_f1
+                    best_fold_model_state = self.model.state_dict().copy()
                     fold_patience = 0
                 else:
                     fold_patience += 1
                 
-                # REMOVER REPORT E PRUNING DAQUI - DEIXAR APENAS NO TREINO FINAL
+                # Report intermediário para Optuna (opcional)
+                if trial is not None:
+                    trial.report(val_auc, fold * epochs + epoch)
+                    if trial.should_prune():
+                        raise optuna.exceptions.TrialPruned()
                 
                 if fold_patience >= self.config.get('patience', 5):
                     print(f"Early stopping no fold {fold+1} na epoch {epoch+1}")
                     break
 
-                print(f'Epoch finished. Current fold best Val AUC: {best_val_auc:.4f}, F1: {val_f1:.4f}, Global best AUC: {best_global_auc:.4f}')
+                print(f'Epoch finished. Current fold best Val AUC: {best_val_auc:.4f}, F1: {val_f1:.4f}, Global best AUC: {best_global_test_auc:.4f}')
             
-            # Armazenar métricas do melhor resultado deste fold
+            # Plotar curvas de treinamento do fold
+            trial_number = trial.number if trial else 'manual'
+            self._plot_training_curves(fold_history, trial_number, fold+1)
+            
+            # Avaliar o melhor modelo deste fold no conjunto de teste
+            print(f"\n{'='*30}")
+            print(f"Avaliando Fold {fold+1} no conjunto de TESTE")
+            print(f"{'='*30}")
+            
+            self.model.load_state_dict(best_fold_model_state)
+            test_metrics = self._evaluate_fold_on_test(test_loader, best_threshold_fold)
+            
+            test_auc = test_metrics['auc_roc']
+            test_aucs.append(test_auc)
+            
+            print(f"Fold {fold+1} - Test AUC: {test_auc:.4f}, Test F1: {test_metrics['f1_score']:.4f}")
+            
+            # Armazenar métricas do fold
             fold_aucs.append(best_val_auc)
             fold_f1_scores.append(best_fold_f1)
-
-            print(f"Fold {fold+1} best threshold: {best_threshold_fold:.4f} (best val AUC: {best_val_auc:.4f}, best F1: {best_fold_f1:.4f})")
-            
             best_thresholds_per_fold.append(best_threshold_fold)
             
             fold_results.append({
@@ -258,178 +310,130 @@ class TrainAndEvalWorker:
                 'best_threshold': best_threshold_fold
             })
             
-            # Atualizar melhor fold globalmente
-            if best_val_auc > best_global_auc:
-                best_global_auc = best_val_auc
+            test_results_per_fold.append({
+                'fold': fold + 1,
+                'test_auc': test_auc,
+                'test_f1': test_metrics['f1_score'],
+                'test_accuracy': test_metrics['accuracy'],
+                'test_precision': test_metrics['precision'],
+                'test_recall': test_metrics['recall']
+            })
+            
+            # Atualizar melhor modelo global baseado no AUC de teste
+            if test_auc > best_global_test_auc:
+                best_global_test_auc = test_auc
+                best_model_state = best_fold_model_state
                 best_fold = fold + 1
+                print(f"✓ Novo melhor modelo global! Test AUC: {best_global_test_auc:.4f} (Fold {best_fold})")
     
-        mean_auc = np.mean(fold_aucs)
-        std_auc = np.std(fold_aucs)
-        mean_f1 = np.mean(fold_f1_scores)
-        std_f1 = np.std(fold_f1_scores)
+        # Calcular estatísticas finais
+        mean_val_auc = np.mean(fold_aucs)
+        std_val_auc = np.std(fold_aucs)
+        mean_val_f1 = np.mean(fold_f1_scores)
+        std_val_f1 = np.std(fold_f1_scores)
+        
+        mean_test_auc = np.mean(test_aucs)
+        std_test_auc = np.std(test_aucs)
         avg_threshold = np.mean(best_thresholds_per_fold)
         
-        print(f"\n{'='*50}")
-        print(f"Resultados da Validação Cruzada")
-        print(f"{'='*50}")
-        print(f"AUC - Média: {mean_auc:.4f} ± {std_auc:.4f}")
-        print(f"F1-Score - Média: {mean_f1:.4f} ± {std_f1:.4f}")
-        print(f"Melhor Fold: {best_fold} (AUC: {best_global_auc:.4f})")
+        # Métrica para Optuna: média - std
+        optuna_metric = mean_test_auc - std_test_auc
+        
+        print(f"\n{'='*70}")
+        print(f"Resultados Finais da Validação Cruzada")
+        print(f"{'='*70}")
+        print(f"Validação - AUC Médio: {mean_val_auc:.4f} ± {std_val_auc:.4f}")
+        print(f"Validação - F1 Médio: {mean_val_f1:.4f} ± {std_val_f1:.4f}")
+        print(f"\nTeste - AUC Médio: {mean_test_auc:.4f} ± {std_test_auc:.4f}")
+        print(f"Melhor Fold (por AUC de Teste): {best_fold} (AUC: {best_global_test_auc:.4f})")
         print(f"Threshold médio: {avg_threshold:.4f}")
-        print(f"{'='*50}\n")
+        print(f"\n★ Métrica Optuna (AUC_test - std): {optuna_metric:.4f}")
+        print(f"{'='*70}\n")
         
         self.avg_threshold = avg_threshold
         
         # Salvar resultados detalhados
+        os.makedirs(f"saved_models/cross_validation/trial_{trial.number if trial else 'manual'}", exist_ok=True)
         results_df = pd.DataFrame(fold_results)
-        #results_df.to_csv('cross_validation_results.csv', index=False)
+        results_df.to_csv(f"saved_models/cross_validation/trial_{trial.number if trial else 'manual'}/fold_validation_results.csv", index=False)
+        
+        test_results_df = pd.DataFrame(test_results_per_fold)
+        test_results_df.to_csv(f"saved_models/cross_validation/trial_{trial.number if trial else 'manual'}/fold_test_results.csv", index=False)
+        
+        # Salvar melhor modelo
+        # if best_model_state is not None:
+        #     torch.save(best_model_state, f"saved_models/cross_validation/trial_{trial.number if trial else 'manual'}/best_model_fold_{best_fold}.pth")
         
         return {
-            'mean_auc': mean_auc,
-            'std_auc': std_auc,
-            'mean_f1': mean_f1,
-            'std_f1': std_f1,
-            'best_global_auc': best_global_auc,
+            'optuna_metric': optuna_metric,  # Para otimização
+            'mean_val_auc': mean_val_auc,
+            'std_val_auc': std_val_auc,
+            'mean_val_f1': mean_val_f1,
+            'std_val_f1': std_val_f1,
+            'mean_test_auc': mean_test_auc,
+            'std_test_auc': std_test_auc,
+            'best_global_test_auc': best_global_test_auc,
             'best_fold': best_fold,
             'avg_threshold': avg_threshold,
-            'fold_results': fold_results
+            'fold_results': fold_results,
+            'test_results_per_fold': test_results_per_fold,
+            'model': self.model
         }
 
-    def train(self, X_train, y_train, patient_ids_train, train_index, gkf:GroupKFold, rop_dataset, trial, full_train_subset:ROPSubset, full_val_subset:ROPSubset, test_subset:ROPSubset, dynamic_config=None):
-        '''
-            Primeiro se realiza o treino da validação cruzada. Depois realiza um treino completo com os dados
-            de treino e validação, salvando o melhor modelo baseado no AUC de validação.
-        '''
+    def _evaluate_fold_on_test(self, test_loader, threshold=0.5):
+        """
+        Avalia o modelo atual no conjunto de teste.
+        Retorna dicionário com métricas.
+        """
+        self.model.eval()
         
-        # Etapa 1: Validação Cruzada
-        cv_results = self.train_cross_validation(
-            X_train, y_train, patient_ids_train, train_index, 
-            gkf, rop_dataset, trial, dynamic_config=dynamic_config
-        )
+        all_predictions = []
+        all_targets = []
+        all_probs = []
         
-        print("\n" + "="*50)
-        print("Iniciando treino completo com todos os dados de treino...")
-        print("="*50 + "\n")
-        
-        # Etapa 2: Preparar DataLoaders completos
-        full_train_loader = DataLoader(
-            full_train_subset,
-            batch_size=self.config.get('batch_size', 32),
-            shuffle=True,
-            num_workers=0,
-            collate_fn=self.custom_collate_fn
-        )
-        full_val_loader = DataLoader(
-            full_val_subset,
-            batch_size=self.config.get('batch_size', 32),
-            shuffle=False,
-            num_workers=0,
-            collate_fn=self.custom_collate_fn
-        )
-        test_loader = DataLoader(
-            test_subset,
-            batch_size=self.config.get('batch_size', 32),
-            shuffle=False,
-            num_workers=0,
-            collate_fn=self.custom_collate_fn
-        )
-        
-        # Etapa 3: Reinicializar o modelo para o treino final
-        self.model = DynamicEfficientNet(dynamic_config).to(self.config['device'])
-        self.optimizer = optim.AdamW(
-            self.model.parameters(),
-            lr=self.config.get('learning_rate', 1e-4),
-            weight_decay=self.config.get('weight_decay', 1e-5)
-        )
-        
-        # Etapa 4: Treinar no conjunto completo
-        best_val_auc = 0.0
-        best_model_state = None
-        best_epoch = 0
-        best_threshold = 0.5
-        best_val_f1 = 0.0
-        
-        epochs = self.config.get('num_epochs', 20)
-        train_history = {
-            'train_loss': [],
-            'train_acc': [],
-            'val_loss': [],
-            'val_auc': [],
-            'val_f1': []
-        }
-        
-        train_patience = 0
-
-        for epoch in range(epochs):
-            print(f'\n{"="*30}')
-            print(f'Epoch {epoch+1}/{epochs}')
-            print(f'{"="*30}')
-            
-            train_acc, train_loss, val_loss, val_auc, val_threshold, val_f1 = self.train_epoch(
-                full_train_loader, full_val_loader
-            )
-            
-            # Armazenar histórico
-            train_history['train_loss'].append(train_loss)
-            train_history['train_acc'].append(train_acc)
-            train_history['val_loss'].append(val_loss)
-            train_history['val_auc'].append(val_auc)
-            train_history['val_f1'].append(val_f1)
-            
-            # Salvar melhor modelo baseado no AUC de validação
-            if val_auc > best_val_auc:
-                best_val_auc = val_auc
-                best_model_state = self.model.state_dict().copy()
-                best_epoch = epoch + 1
-                best_threshold = val_threshold
-                best_val_f1 = val_f1
-                train_patience = 0 
-                print(f'Novo melhor modelo! Val AUC: {best_val_auc:.4f}, F1: {best_val_f1:.4f}')
-            else:
-                train_patience += 1
-            
-            if trial is not None:
-                trial.report(val_auc, epoch)
+        with torch.no_grad():
+            for data, targets in test_loader:
+                data, targets = data.to(self.config['device']), targets.float().to(self.config['device'])
+                outputs = self.model(data).squeeze(-1)
                 
-                # Verificar pruning
-                if trial.should_prune():
-                    print("Trial pruned by Optuna.")
-                    raise optuna.TrialPruned()
-        
-            if train_patience >= self.config.get('patience', 5):
-                print(f"Early stopping na epoch {epoch+1}")
-                break
-            
-            print(f'Best Val AUC so far: {best_val_auc:.4f} (Epoch {best_epoch})')
-    
-        self._plot_training_curves(train_history, trial_number = trial.number)
+                probs = torch.sigmoid(outputs)
+                predicted = (probs > threshold).float()
+                
+                all_predictions.extend(predicted.cpu().numpy())
+                all_targets.extend(targets.cpu().numpy())
+                all_probs.extend(probs.cpu().numpy())
 
-        # Retornar resultados completos
-        results_training =  {
-            'cv_results': cv_results,
-            'best_val_auc': best_val_auc,
-            'best_val_f1': best_val_f1,
-            'best_epoch': best_epoch,
-            'best_threshold': best_threshold,
-            'train_history': train_history,
-            'model': self.model,
-            
+        all_predictions = np.array(all_predictions).astype(int)
+        all_targets = np.array(all_targets).astype(int)
+        all_probs = np.array(all_probs)
+        
+        accuracy = accuracy_score(all_targets, all_predictions)
+        precision = precision_score(all_targets, all_predictions, zero_division=0)
+        recall = recall_score(all_targets, all_predictions, zero_division=0)
+        f1 = f1_score(all_targets, all_predictions, zero_division=0)
+        
+        try:
+            auc_roc = roc_auc_score(all_targets, all_probs, average='weighted')
+        except:
+            auc_roc = 0.5
+        
+        return {
+            'accuracy': accuracy,
+            'precision': precision,
+            'recall': recall,
+            'f1_score': f1,
+            'auc_roc': auc_roc
         }
 
-        #Salvando localmente
-        os.makedirs(f"saved_models/complete_training/trial_{trial.number}", exist_ok=True)
-        pd.DataFrame(results_training).to_csv(f"saved_models/complete_training/trial_{trial.number}/training_results.csv")
-        return results_training
-        
-
-    def evaluate(self, test_dataset, model, trial_number):
-        self.model = model 
+    def evaluate(self, test_dataset, model_path=None):
+        if model_path:
+            self.model.load_state_dict(torch.load(model_path, map_location=self.config['device']))
+            print(f"Modelo carregado de: {model_path}")
         
         test_loader = DataLoader(
             test_dataset,
             batch_size=self.config.get('batch_size', 32),
             shuffle=False,
-            num_workers=0,
             collate_fn=self.custom_collate_fn
         )
         
@@ -496,11 +500,11 @@ class TrainAndEvalWorker:
         print(f"{'='*50}")
 
         # salvar matriz de confusão como imagem
-        os.makedirs(f"saved_models/plot/trial_{trial_number}", exist_ok=True)
+        os.makedirs("best_efficient/plot", exist_ok=True)
         disp = ConfusionMatrixDisplay(conf_matrix)
         disp.plot(cmap='Blues')
         plt.title("Confusion Matrix - Test Set")
-        plt.savefig(f"saved_models/plot/trial_{trial_number}/test_confusion_matrix.png")
+        plt.savefig("best_efficient/plot/test_confusion_matrix.png")
         plt.close()
         ####
         results = {
@@ -517,16 +521,20 @@ class TrainAndEvalWorker:
         # threshold
 
         #salvando results
-        os.makedirs(f"saved_models/test_results/trial_{trial_number}", exist_ok=True)
-        pd.DataFrame(results, index=[0]).to_csv(f"saved_models/test_results/trial_{trial_number}/test_results.csv")
-
+        pd.DataFrame(results, index=[0]).to_csv('best_efficient/test_results.csv')
+        
         return results
 
-    def _plot_training_curves(self, history, trial_number):
+    def _plot_training_curves(self, history, trial_number, fold_number=None):
         """
         Plota as curvas de Loss, AUC e F1-Score durante o treinamento.
         """
-        os.makedirs(f"saved_models/plot/train_curves/trial_{trial_number}", exist_ok=True)
+        if fold_number is not None:
+            save_path = f"saved_models/plot/train_curves/trial_{trial_number}/fold{fold_number}"
+        else:
+            save_path = f"saved_models/plot/train_curves/trial_{trial_number}"
+        
+        os.makedirs(save_path, exist_ok=True)
         
         fig, axes = plt.subplots(2, 2, figsize=(15, 10))
         
@@ -564,10 +572,10 @@ class TrainAndEvalWorker:
         axes[1, 1].grid(True)
         
         plt.tight_layout()
-        plt.savefig(f'saved_models/plot/training_curves/trial_{trial_number}/training_curves.png', dpi=300)
+        plt.savefig(f'{save_path}/training_curves.png', dpi=300)
         plt.close()
 
-        print(f"✓ Curvas de treinamento salvas em: saved_models/plot/training_curves/trial_{trial_number}/training_curves.png")
+        print(f"✓ Curvas de treinamento salvas em: {save_path}/training_curves.png")
 
 class BinaryFocalLoss(nn.Module):
     """

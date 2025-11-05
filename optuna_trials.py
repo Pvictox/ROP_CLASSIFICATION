@@ -15,11 +15,10 @@ class OptunaTrials:
             (192, 320, 1, 1), # Estágio 7
         ]
 
-        self.best_model = None
         self.best_auc = 0.0
+        self.best_model = None
     
-    def save_best_model(self, path='saved_models/best_dynamic_efficientnet.pth', trial_number=0):
-        path = f'saved_models/best_dynamic_efficientnet_trial_{trial_number}.pth'
+    def save_best_model(self, path='saved_models/best_dynamic_efficientnet.pth'):
         if self.best_model is not None:
             torch.save(self.best_model.state_dict(), path)
             print(f"Melhor modelo salvo em {path}")
@@ -31,11 +30,7 @@ class OptunaTrials:
         dynamic_config = [] #Para salvar as config
 
         MAX_STAGE_FOR_ATT = 3
-        should_save_model = False
-
-        #Só irá salvar o modelo localmente a cada num_trials/2 trials. Então no final do estudo nós teremos apenas 2 modelos salvos localmente.
-        if trial.number % (num_trials // 2) == 0:
-            should_save_model = True
+        
 
         for i, (in_c, out_c, n_layers, stride) in enumerate(self.base_state_config):
             cfg = {}
@@ -67,25 +62,18 @@ class OptunaTrials:
         model = DynamicEfficientNet(dynamic_config).to(device)
         try:
             worker = TrainAndEvalWorker(config=None, model=model)
-            results = worker.train(X_train, y_train, patient_ids_train, train_indx, gkf, rop_dataset, trial, dynamic_config=dynamic_config, full_train_subset=full_train_subset, full_val_subset=full_val_subset, test_subset=test_subset)
-            print("Avaliação no conjunto de teste...")
-            worker.evaluate(test_subset, model=model, trial_number=trial.number)  # Avaliação no conjunto de teste
-
-            avg_auc = results['best_val_auc']
-            avg_f1 = results['best_val_f1']
-            
+            results = worker.train(X_train, y_train, patient_ids_train, train_indx, gkf, rop_dataset, trial, dynamic_config=dynamic_config, test_subset=test_subset)
+            optuna_metric = results['optuna_metric']
+            model = results.get('model', None)
 
         except Exception as e:
             print(f"Trial {trial.number} falhou com erro: {e}")
             return -1.0 # Retorna uma acurácia muito ruim
 
-        if avg_auc > self.best_auc:
-            self.best_auc = avg_auc
-            self.best_model = results['model']
+        if optuna_metric > self.best_auc:
+            self.best_auc = optuna_metric
+            self.best_model = model
         
-        if should_save_model:
-            self.save_best_model(trial_number=trial.number)
-
-
-        return avg_auc, avg_f1
+        self.save_best_model()
+        return optuna_metric
         

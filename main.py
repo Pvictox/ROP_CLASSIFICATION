@@ -20,6 +20,10 @@ db_url = os.getenv('DB_URL')
 IMG_FILE_PATH = '/home/pedro_fonseca/PATIENT_ROP/DATASET'
 CSV_FILE_PATH = '/home/pedro_fonseca/PATIENT_ROP/DATASET/infant_retinal_database_info.csv'
 
+# IMG_FILE_PATH = '/backup/lucas/rop_dataset/images_stack_without_captions/images_stack_without_captions'
+# CSV_FILE_PATH = '/backup/lucas/rop_dataset/infant_retinal_database_info.csv'
+
+
 IS_INTERACTIVE = True #Isto é uma flag para indicar se o código está sendo executado em um ambiente interativo (como Jupyter Notebook) ou não.
 
 os.makedirs('saved_models', exist_ok=True)
@@ -32,12 +36,12 @@ def main():
         print(f"Número total de imagens processadas: {len(df)}")        
         rop_dataset = ROPDataset(df, is_train=False, apply_clahe=True)
         # X_train, y_train, train_indx, patient_ids_train, gkf, test_dataset = data_factory.prepare_data_for_cross_validation(rop_dataset)
-        X_train, y_train, train_indx, patient_ids_train, gkf, test_dataset = data_factory.prepare_data_for_cross_validation_3(rop_dataset, num_splits=3)
+        X_train, y_train, train_indx, patient_ids_train, gkf, test_dataset = data_factory.prepare_data_for_cross_validation_3(rop_dataset, num_splits=2)
 
         train_full_subset, val_full_subset, test_subset = data_factory.prepare_train_val_and_test_datasets(rop_dataset)
 
         pruner = optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=0, interval_steps=1)
-        study = optuna.create_study(direction='maximize', pruner=pruner, study_name='dynamic_efficientnet_optimization_trials_final', storage=db_url, load_if_exists=True
+        study = optuna.create_study(direction='maximize', pruner=pruner, study_name='dynamic_efficientnet_optimization_trials_final_MEU_DEUS', storage=db_url, load_if_exists=True
                     )
         optuna_trials = OptunaTrials()
         N_TRIALS = 50
@@ -46,6 +50,8 @@ def main():
         except KeyboardInterrupt:
             print("Otimização interrompida pelo usuário.")
 
+        worker = TrainAndEvalWorker(config=None, model=None)
+        results = worker.evaluate(test_subset, model_path='saved_models/best_dynamic_efficientnet.pth')
         #optuna_trials.save_best_model()
         print("\n--- Otimização Concluída ---")
         print(f"Melhor trial: {study.best_trial.number}")
