@@ -14,6 +14,7 @@ import os
 import matplotlib.pyplot as plt
 import torch.nn.functional as F
 from binary_focal_loss import BinaryFocalLoss
+import seaborn as sns
 
 class TrainAndEvalWorkerOriga:
     def __init__(self, config:dict):
@@ -351,10 +352,18 @@ class TrainAndEvalWorkerOriga:
 
         # salvar matriz de confusão como imagem
         os.makedirs("saved_models/plot/efficient_ORIGA", exist_ok=True)
-        disp = ConfusionMatrixDisplay(conf_matrix)
-        disp.plot(cmap='Blues')
-        plt.title("Matriz de Confusão")
+        plt.figure(figsize=(8,6))
+        sns.set(font_scale=1.2)
+        fmt = 'd'
+        cmap = 'Blues'
+        sns.heatmap(conf_matrix, annot=True, fmt=fmt, cmap=cmap, cbar=False,
+                    xticklabels=['Saudável', 'Glaucoma'],
+                    yticklabels=['Saudável', 'Glaucoma'])
+        plt.xlabel("Predito", fontsize=14, labelpad=15)
+        plt.ylabel("Ground Truth", fontsize=14, labelpad=15)
+        plt.title(f"Matriz de Confusão", fontsize=16, pad=20)
         plt.savefig("saved_models/plot/efficient_ORIGA/test_confusion_matrix.png")
+        
         plt.close()
         ####
         results = {
