@@ -14,41 +14,53 @@ class DataFactory:
         self.img_path = img_path
         self.metadata_path = metadata_path
 
-
-    #Todo: Realizar uma filtragem de acordo com o código do diagnóstico. 
     def load_data(self, verbose=True, allowed_diagnoses=None) -> pd.DataFrame | None:
-        image_files = glob(os.path.join(self.img_path, "**", "*.jpg"), recursive=True)
-        if not image_files:
-            raise FileNotFoundError(f"Nenhum arquivo de imagem encontrado em {self.img_path}")
+        # Ler o CSV com as informações
+        df = pd.read_csv(self.metadata_path)
+        
         if verbose:
-            print(f"Número de arquivos de imagem encontrados: {len(image_files)}")
-
-        patient_ids, valid_files, new_binary_labels, diagnosis_codes = [], [], [], []
-        for file_path in image_files:
-            diagnosis = self.get_diagnosis_from_filename(file_path)
-            if allowed_diagnoses is not None and diagnosis not in allowed_diagnoses: # Se a lista de diagnósticos permitidos for fornecida, filtrar
+            print(f"Número de registros no CSV: {len(df)}")
+        
+        patient_ids, valid_files, binary_labels, diagnosis_codes = [], [], [], []
+        
+        for idx, row in df.iterrows():
+            filename = row['Filename']
+            glaucoma = row['Glaucoma']
+            
+            # Filtrar por diagnósticos permitidos, se especificado
+            if allowed_diagnoses is not None and glaucoma not in allowed_diagnoses:
                 continue
-            if diagnosis is not None:
-                diagnosis_codes.append(diagnosis)
-                patient_id = self.get_patient_id_from_filename(file_path)
-                if patient_id is None:
-                    continue
-                patient_ids.append(patient_id)
-                binary_label = self.convert_to_binary_label(diagnosis, not_rop_list=[0]) #COnsiderando apenas 0 como sem ROP
-                valid_files.append(file_path)
-                new_binary_labels.append(binary_label)
+            
+            # Construir o caminho completo da imagem
+            file_path = os.path.join(self.img_path, filename)
+            
+            # Verificar se a imagem existe
+            if not os.path.exists(file_path):
+                if verbose:
+                    print(f"Imagem não encontrada: {file_path}")
+                continue
+            
+            # No ORIGA, cada imagem é um paciente único
+            # Usar o nome do arquivo sem extensão como patient_id
+            patient_id = os.path.splitext(filename)[0]
+            
+            patient_ids.append(patient_id)
+            valid_files.append(file_path)
+            binary_labels.append(glaucoma)  # 0 ou 1
+            diagnosis_codes.append(glaucoma)
+        
         if verbose:
-                print(f"Número de arquivos válidos após filtragem: {len(valid_files)}")
+            print(f"Número de arquivos válidos após filtragem: {len(valid_files)}")
+            print(f"Distribuição de diagnósticos: {pd.Series(binary_labels).value_counts().to_dict()}")
         
         binarized_dataframe = pd.DataFrame({
             'patient_id': patient_ids,
             'filepath': valid_files,
-            'binary_label': new_binary_labels,
+            'binary_label': binary_labels,
             'diagnosis_code': diagnosis_codes
         })
-
+        
         return binarized_dataframe
-
 
     def prepare_metadata(self, metadata_path, verbose=True) -> pd.DataFrame | None:
         try:
