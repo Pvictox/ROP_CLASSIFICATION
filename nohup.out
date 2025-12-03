@@ -22847,3 +22847,886 @@ Train Loss: 0.2541, Train Acc: 87.20%, Val AUC: 0.8736
 Epoch finished. Current fold best Val AUC: 0.8772, Global best AUC: 0.8772
 
 Epoch 12/30
+Traceback (most recent call last):
+  File "/home/pedro_fonseca/PATIENT_ROP/main.py", line 4, in <module>
+    from data_factory.data_factory import DataFactory
+  File "/home/pedro_fonseca/PATIENT_ROP/data_factory/data_factory.py", line 2, in <module>
+    import pandas as pd
+ModuleNotFoundError: No module named 'pandas'
+[I 2025-11-05 18:04:22,107] Using an existing study with name 'dynamic_efficientnet_optimization_trials_final_MEU_DEUS' instead of creating a new one.
+[I 2025-11-05 18:06:12,374] Using an existing study with name 'dynamic_efficientnet_optimization_trials_final_MEU_DEUS' instead of creating a new one.
+Traceback (most recent call last):
+  File "/home/pedro_fonseca/PATIENT_ROP/main.py", line 7, in <module>
+    from train_and_val_worker import TrainAndEvalWorker
+  File "/home/pedro_fonseca/PATIENT_ROP/train_and_val_worker.py", line 17, in <module>
+    import optuna
+ModuleNotFoundError: No module named 'optuna'
+[I 2025-11-05 18:07:36,391] Using an existing study with name 'dynamic_efficientnet_optimization_trials_final_MEU_DEUS' instead of creating a new one.
+[I 2025-11-05 19:08:21,081] Trial 187 finished with value: -1.0 and parameters: {'stage_0_block': 'FusedMBConv', 'stage_0_kernel': 5, 'stage_0_expand': 6, 'stage_0_attention': 'cbam', 'stage_0_att_reduction': 16, 'stage_1_block': 'FusedMBConv', 'stage_1_kernel': 5, 'stage_1_expand': 4, 'stage_1_attention': 'none', 'stage_2_block': 'MBConv', 'stage_2_kernel': 5, 'stage_2_expand': 6, 'stage_2_attention': 'cbam', 'stage_2_att_reduction': 8, 'stage_3_block': 'MBConv', 'stage_3_kernel': 3, 'stage_3_expand': 4, 'stage_3_attention': 'none', 'stage_4_block': 'FusedMBConv', 'stage_4_kernel': 5, 'stage_4_expand': 4, 'stage_4_attention': 'cbam', 'stage_5_block': 'MBConv', 'stage_5_kernel': 5, 'stage_5_expand': 4, 'stage_5_attention': 'se', 'stage_6_block': 'MBConv', 'stage_6_kernel': 5, 'stage_6_expand': 6, 'stage_6_attention': 'cbam'}. Best is trial 95 with value: 0.8811925225196716.
+[I 2025-11-05 19:28:23,583] Trial 190 finished with value: -1.0 and parameters: {'stage_0_block': 'FusedMBConv', 'stage_0_kernel': 3, 'stage_0_expand': 4, 'stage_0_attention': 'cbam', 'stage_0_att_reduction': 16, 'stage_1_block': 'MBConv', 'stage_1_kernel': 3, 'stage_1_expand': 6, 'stage_1_attention': 'se', 'stage_1_att_reduction': 16, 'stage_2_block': 'MBConv', 'stage_2_kernel': 3, 'stage_2_expand': 4, 'stage_2_attention': 'none', 'stage_3_block': 'FusedMBConv', 'stage_3_kernel': 3, 'stage_3_expand': 6, 'stage_3_attention': 'se', 'stage_3_att_reduction': 8, 'stage_4_block': 'MBConv', 'stage_4_kernel': 5, 'stage_4_expand': 6, 'stage_4_attention': 'none', 'stage_5_block': 'FusedMBConv', 'stage_5_kernel': 3, 'stage_5_expand': 6, 'stage_5_attention': 'none', 'stage_6_block': 'FusedMBConv', 'stage_6_kernel': 3, 'stage_6_expand': 4, 'stage_6_attention': 'se'}. Best is trial 95 with value: 0.8811925225196716.
+[I 2025-11-05 20:35:26,963] Trial 192 finished with value: -1.0 and parameters: {'stage_0_block': 'MBConv', 'stage_0_kernel': 5, 'stage_0_expand': 4, 'stage_0_attention': 'se', 'stage_0_att_reduction': 8, 'stage_1_block': 'FusedMBConv', 'stage_1_kernel': 3, 'stage_1_expand': 4, 'stage_1_attention': 'none', 'stage_2_block': 'MBConv', 'stage_2_kernel': 3, 'stage_2_expand': 6, 'stage_2_attention': 'cbam', 'stage_2_att_reduction': 4, 'stage_3_block': 'FusedMBConv', 'stage_3_kernel': 5, 'stage_3_expand': 4, 'stage_3_attention': 'cbam', 'stage_3_att_reduction': 4, 'stage_4_block': 'MBConv', 'stage_4_kernel': 3, 'stage_4_expand': 4, 'stage_4_attention': 'none', 'stage_5_block': 'MBConv', 'stage_5_kernel': 5, 'stage_5_expand': 4, 'stage_5_attention': 'cbam', 'stage_6_block': 'FusedMBConv', 'stage_6_kernel': 5, 'stage_6_expand': 6, 'stage_6_attention': 'se'}. Best is trial 95 with value: 0.8811925225196716.
+[I 2025-11-05 20:38:42,073] Trial 208 finished with value: -1.0 and parameters: {'stage_0_block': 'MBConv', 'stage_0_kernel': 3, 'stage_0_expand': 4, 'stage_0_attention': 'se', 'stage_0_att_reduction': 8, 'stage_1_block': 'MBConv', 'stage_1_kernel': 3, 'stage_1_expand': 4, 'stage_1_attention': 'se', 'stage_1_att_reduction': 4, 'stage_2_block': 'FusedMBConv', 'stage_2_kernel': 3, 'stage_2_expand': 6, 'stage_2_attention': 'se', 'stage_2_att_reduction': 4, 'stage_3_block': 'MBConv', 'stage_3_kernel': 5, 'stage_3_expand': 4, 'stage_3_attention': 'none', 'stage_4_block': 'MBConv', 'stage_4_kernel': 3, 'stage_4_expand': 4, 'stage_4_attention': 'cbam', 'stage_5_block': 'FusedMBConv', 'stage_5_kernel': 3, 'stage_5_expand': 4, 'stage_5_attention': 'none', 'stage_6_block': 'FusedMBConv', 'stage_6_kernel': 5, 'stage_6_expand': 4, 'stage_6_attention': 'cbam'}. Best is trial 95 with value: 0.8811925225196716.
+[I 2025-11-05 21:25:41,778] Trial 201 finished with value: -1.0 and parameters: {'stage_0_block': 'MBConv', 'stage_0_kernel': 3, 'stage_0_expand': 4, 'stage_0_attention': 'none', 'stage_1_block': 'MBConv', 'stage_1_kernel': 3, 'stage_1_expand': 6, 'stage_1_attention': 'none', 'stage_2_block': 'FusedMBConv', 'stage_2_kernel': 3, 'stage_2_expand': 4, 'stage_2_attention': 'cbam', 'stage_2_att_reduction': 16, 'stage_3_block': 'FusedMBConv', 'stage_3_kernel': 3, 'stage_3_expand': 6, 'stage_3_attention': 'se', 'stage_3_att_reduction': 8, 'stage_4_block': 'MBConv', 'stage_4_kernel': 5, 'stage_4_expand': 6, 'stage_4_attention': 'none', 'stage_5_block': 'FusedMBConv', 'stage_5_kernel': 3, 'stage_5_expand': 6, 'stage_5_attention': 'cbam', 'stage_6_block': 'FusedMBConv', 'stage_6_kernel': 3, 'stage_6_expand': 4, 'stage_6_attention': 'se'}. Best is trial 95 with value: 0.8811925225196716.
+[I 2025-11-05 21:31:30,466] Trial 234 finished with value: -1.0 and parameters: {'stage_0_block': 'FusedMBConv', 'stage_0_kernel': 5, 'stage_0_expand': 4, 'stage_0_attention': 'cbam', 'stage_0_att_reduction': 16, 'stage_1_block': 'FusedMBConv', 'stage_1_kernel': 5, 'stage_1_expand': 4, 'stage_1_attention': 'cbam', 'stage_1_att_reduction': 16, 'stage_2_block': 'MBConv', 'stage_2_kernel': 3, 'stage_2_expand': 4, 'stage_2_attention': 'se', 'stage_2_att_reduction': 4, 'stage_3_block': 'FusedMBConv', 'stage_3_kernel': 5, 'stage_3_expand': 4, 'stage_3_attention': 'se', 'stage_3_att_reduction': 4, 'stage_4_block': 'MBConv', 'stage_4_kernel': 5, 'stage_4_expand': 6, 'stage_4_attention': 'cbam', 'stage_5_block': 'FusedMBConv', 'stage_5_kernel': 3, 'stage_5_expand': 4, 'stage_5_attention': 'none', 'stage_6_block': 'MBConv', 'stage_6_kernel': 3, 'stage_6_expand': 6, 'stage_6_attention': 'cbam'}. Best is trial 95 with value: 0.8811925225196716.
+Número de arquivos de imagem encontrados: 18012
+Número de arquivos válidos após filtragem: 18012
+  patient_id  ... diagnosis_code
+0        180  ...              0
+1        180  ...              0
+2        180  ...              0
+3        180  ...              0
+4        180  ...              0
+
+[5 rows x 4 columns]
+Número total de imagens processadas: 18012
+=== Estatísticas após filtragem ===
+Número total de pacientes: 181
+Número total de imagens: 11588
+Pacientes por tipo:
+patient_type
+normal_only    128
+rop_only        53
+Name: count, dtype: int64
+
+=== Split treino/teste ===
+Pacientes treino: 144 | Pacientes teste: 37
+Imagens treino: 9168 | Imagens teste: 2420
+Distribuição de classes (treino): Counter({0: 5922, 1: 3246})
+Distribuição de classes (teste): Counter({0: 1473, 1: 947})
+=== Split Treino/Validação/Teste ===
+Pacientes treino: 127 | Pacientes validação: 23 | Pacientes teste: 38
+Imagens treino: 13074 | Imagens validação: 1800 | Imagens teste: 3138
+
+Distribuição de classes:
+Treino: Counter({0: 6645, 1: 6429})
+Validação: Counter({1: 990, 0: 810})
+Teste: Counter({1: 1653, 0: 1485})
+Configuração vazia fornecida. Utilizando valores padrão.
+
+==================================================
+Iniciando Validação Cruzada com Avaliação no Teste
+==================================================
+
+==================================================
+Fold 1/3
+==================================================
+Samples weight distribution: tensor([0.0003, 0.0003, 0.0003,  ..., 0.0003, 0.0003, 0.0003],
+       dtype=torch.float64)
+
+Epoch 1/25
+Batch 0, Loss: 0.2709
+Batch 10, Loss: 0.2487
+Batch 20, Loss: 0.2919
+Batch 30, Loss: 0.2445
+Batch 40, Loss: 0.2993
+Batch 50, Loss: 0.2292
+Batch 60, Loss: 0.2600
+Batch 70, Loss: 0.2122
+Batch 80, Loss: 0.2515
+Batch 90, Loss: 0.2312
+Batch 100, Loss: 0.2728
+Batch 110, Loss: 0.2397
+Batch 120, Loss: 0.2779
+Batch 130, Loss: 0.2775
+Batch 140, Loss: 0.2124
+Batch 150, Loss: 0.2521
+Batch 160, Loss: 0.1811
+Batch 170, Loss: 0.2317
+Batch 180, Loss: 0.2202
+Batch 190, Loss: 0.2172
+Train Loss: 0.2420, Train Acc: 65.42%, Val AUC: 0.7132, Val F1: 0.6848
+Trial 187 falhou com erro: 
+Configuração vazia fornecida. Utilizando valores padrão.
+
+==================================================
+Iniciando Validação Cruzada com Avaliação no Teste
+==================================================
+
+==================================================
+Fold 1/3
+==================================================
+Samples weight distribution: tensor([0.0003, 0.0003, 0.0003,  ..., 0.0003, 0.0003, 0.0003],
+       dtype=torch.float64)
+
+Epoch 1/25
+Batch 0, Loss: 0.2616
+Batch 10, Loss: 0.3177
+Batch 20, Loss: 0.2453
+Batch 30, Loss: 0.4060
+Batch 40, Loss: 0.2488
+Batch 50, Loss: 0.2620
+Batch 60, Loss: 0.2709
+Batch 70, Loss: 0.2759
+Batch 80, Loss: 0.2416
+Batch 90, Loss: 0.2511
+Batch 100, Loss: 0.2466
+Batch 110, Loss: 0.2818
+Batch 120, Loss: 0.2852
+Batch 130, Loss: 0.2396
+Batch 140, Loss: 0.2330
+Batch 150, Loss: 0.2173
+Batch 160, Loss: 0.2166
+Batch 170, Loss: 0.2391
+Batch 180, Loss: 0.2377
+Batch 190, Loss: 0.2543
+Train Loss: 0.2548, Train Acc: 60.50%, Val AUC: 0.7566, Val F1: 0.7272
+Epoch finished. Current fold best Val AUC: 0.7566, F1: 0.7272, Global best AUC: 0.0000
+
+Epoch 2/25
+Batch 0, Loss: 0.2167
+Batch 10, Loss: 0.2644
+Batch 20, Loss: 0.2031
+Batch 30, Loss: 0.2614
+Batch 40, Loss: 0.2027
+Batch 50, Loss: 0.2089
+Batch 60, Loss: 0.2537
+Batch 70, Loss: 0.2330
+Batch 80, Loss: 0.2177
+Batch 90, Loss: 0.2689
+Batch 100, Loss: 0.1635
+Batch 110, Loss: 0.1449
+Batch 120, Loss: 0.2078
+Batch 130, Loss: 0.2186
+Batch 140, Loss: 0.2196
+Batch 150, Loss: 0.2052
+Batch 160, Loss: 0.1835
+Batch 170, Loss: 0.1969
+Batch 180, Loss: 0.1628
+Batch 190, Loss: 0.1305
+Train Loss: 0.2193, Train Acc: 70.62%, Val AUC: 0.5803, Val F1: 0.5811
+Trial 201 falhou com erro: 
+Configuração vazia fornecida. Utilizando valores padrão.
+
+==================================================
+Iniciando Validação Cruzada com Avaliação no Teste
+==================================================
+
+==================================================
+Fold 1/3
+==================================================
+Samples weight distribution: tensor([0.0003, 0.0003, 0.0003,  ..., 0.0003, 0.0003, 0.0003],
+       dtype=torch.float64)
+
+Epoch 1/25
+Batch 0, Loss: 0.2775
+Batch 10, Loss: 0.2908
+Batch 20, Loss: 0.2699
+Batch 30, Loss: 0.2481
+Batch 40, Loss: 0.2463
+Batch 50, Loss: 0.2477
+Batch 60, Loss: 0.2258
+Batch 70, Loss: 0.2920
+Batch 80, Loss: 0.2432
+Batch 90, Loss: 0.2180
+Batch 100, Loss: 0.2382
+Batch 110, Loss: 0.2577
+Batch 120, Loss: 0.2513
+Batch 130, Loss: 0.2288
+Batch 140, Loss: 0.2070
+Batch 150, Loss: 0.2141
+Batch 160, Loss: 0.2247
+Batch 170, Loss: 0.2318
+Batch 180, Loss: 0.1704
+Batch 190, Loss: 0.2269
+Train Loss: 0.2476, Train Acc: 63.80%, Val AUC: 0.8056, Val F1: 0.7575
+Epoch finished. Current fold best Val AUC: 0.8056, F1: 0.7575, Global best AUC: 0.0000
+
+Epoch 2/25
+Batch 0, Loss: 0.2056
+Batch 10, Loss: 0.2145
+Batch 20, Loss: 0.2157
+Batch 30, Loss: 0.1745
+Batch 40, Loss: 0.1861
+Batch 50, Loss: 0.2394
+Batch 60, Loss: 0.2113
+Batch 70, Loss: 0.2576
+Batch 80, Loss: 0.2163
+Batch 90, Loss: 0.2141
+Batch 100, Loss: 0.2547
+Batch 110, Loss: 0.1737
+Batch 120, Loss: 0.2216
+Batch 130, Loss: 0.1713
+Batch 140, Loss: 0.2292
+Batch 150, Loss: 0.1889
+Batch 160, Loss: 0.1903
+Batch 170, Loss: 0.1579
+Batch 180, Loss: 0.1844
+Batch 190, Loss: 0.2014
+Train Loss: 0.2177, Train Acc: 71.26%, Val AUC: 0.8291, Val F1: 0.7629
+Epoch finished. Current fold best Val AUC: 0.8291, F1: 0.7629, Global best AUC: 0.0000
+
+Epoch 3/25
+Batch 0, Loss: 0.1861
+Batch 10, Loss: 0.1663
+Batch 20, Loss: 0.2258
+Batch 30, Loss: 0.2411
+Batch 40, Loss: 0.2082
+Batch 50, Loss: 0.2005
+Batch 60, Loss: 0.1438
+Batch 70, Loss: 0.2096
+Batch 80, Loss: 0.1661
+Batch 90, Loss: 0.2071
+Batch 100, Loss: 0.1890
+Batch 110, Loss: 0.1430
+Batch 120, Loss: 0.1849
+Batch 130, Loss: 0.2071
+Batch 140, Loss: 0.1726
+Batch 150, Loss: 0.1766
+Batch 160, Loss: 0.2002
+Batch 170, Loss: 0.1749
+Batch 180, Loss: 0.1543
+Batch 190, Loss: 0.1613
+Train Loss: 0.2010, Train Acc: 74.91%, Val AUC: 0.7958, Val F1: 0.7004
+Epoch finished. Current fold best Val AUC: 0.8291, F1: 0.7004, Global best AUC: 0.0000
+
+Epoch 4/25
+Batch 0, Loss: 0.1453
+Batch 10, Loss: 0.2195
+Batch 20, Loss: 0.1975
+Batch 30, Loss: 0.1995
+Batch 40, Loss: 0.2726
+Batch 50, Loss: 0.1541
+Batch 60, Loss: 0.1420
+Batch 70, Loss: 0.1866
+Batch 80, Loss: 0.1748
+Batch 90, Loss: 0.1340
+Batch 100, Loss: 0.1947
+Batch 110, Loss: 0.1991
+Batch 120, Loss: 0.1799
+Batch 130, Loss: 0.1832
+Batch 140, Loss: 0.2232
+Batch 150, Loss: 0.1459
+Batch 160, Loss: 0.1947
+Batch 170, Loss: 0.1964
+Batch 180, Loss: 0.1422
+Batch 190, Loss: 0.1636
+Train Loss: 0.1893, Train Acc: 77.12%, Val AUC: 0.8515, Val F1: 0.7972
+Epoch finished. Current fold best Val AUC: 0.8515, F1: 0.7972, Global best AUC: 0.0000
+
+Epoch 5/25
+Batch 0, Loss: 0.1362
+Batch 10, Loss: 0.1793
+Batch 20, Loss: 0.1821
+Batch 30, Loss: 0.1838
+Batch 40, Loss: 0.1567
+Batch 50, Loss: 0.1985
+Batch 60, Loss: 0.2110
+Batch 70, Loss: 0.2387
+Batch 80, Loss: 0.1750
+Batch 90, Loss: 0.1646
+Batch 100, Loss: 0.1641
+Batch 110, Loss: 0.1764
+Batch 120, Loss: 0.1606
+Batch 130, Loss: 0.1404
+Batch 140, Loss: 0.1782
+Batch 150, Loss: 0.1461
+Batch 160, Loss: 0.1919
+Batch 170, Loss: 0.1671
+Batch 180, Loss: 0.1513
+Batch 190, Loss: 0.1478
+Train Loss: 0.1786, Train Acc: 78.62%, Val AUC: 0.8649, Val F1: 0.7780
+Epoch finished. Current fold best Val AUC: 0.8649, F1: 0.7780, Global best AUC: 0.0000
+
+Epoch 6/25
+Batch 0, Loss: 0.2272
+Batch 10, Loss: 0.1573
+Batch 20, Loss: 0.1110
+Batch 30, Loss: 0.1353
+Batch 40, Loss: 0.1631
+Batch 50, Loss: 0.1822
+Batch 60, Loss: 0.1399
+Batch 70, Loss: 0.2083
+Batch 80, Loss: 0.2141
+Batch 90, Loss: 0.1944
+Batch 100, Loss: 0.1946
+Batch 110, Loss: 0.2530
+Batch 120, Loss: 0.1741
+Batch 130, Loss: 0.2005
+Batch 140, Loss: 0.1972
+Batch 150, Loss: 0.1764
+Batch 160, Loss: 0.1666
+Batch 170, Loss: 0.1295
+Batch 180, Loss: 0.1300
+Batch 190, Loss: 0.1594
+Train Loss: 0.1691, Train Acc: 79.80%, Val AUC: 0.8727, Val F1: 0.8039
+Epoch finished. Current fold best Val AUC: 0.8727, F1: 0.8039, Global best AUC: 0.0000
+
+Epoch 7/25
+Batch 0, Loss: 0.1368
+Batch 10, Loss: 0.1896
+Batch 20, Loss: 0.2476
+Batch 30, Loss: 0.0897Número de arquivos de imagem encontrados: 18012
+Número de arquivos válidos após filtragem: 18012
+  patient_id  ... diagnosis_code
+0        180  ...              0
+1        180  ...              0
+2        180  ...              0
+3        180  ...              0
+4        180  ...              0
+
+[5 rows x 4 columns]
+Número total de imagens processadas: 18012
+=== Estatísticas após filtragem ===
+Número total de pacientes: 181
+Número total de imagens: 11588
+Pacientes por tipo:
+patient_type
+normal_only    128
+rop_only        53
+Name: count, dtype: int64
+
+=== Split treino/teste ===
+Pacientes treino: 144 | Pacientes teste: 37
+Imagens treino: 9168 | Imagens teste: 2420
+Distribuição de classes (treino): Counter({0: 5922, 1: 3246})
+Distribuição de classes (teste): Counter({0: 1473, 1: 947})
+=== Split Treino/Validação/Teste ===
+Pacientes treino: 127 | Pacientes validação: 23 | Pacientes teste: 38
+Imagens treino: 13074 | Imagens validação: 1800 | Imagens teste: 3138
+
+Distribuição de classes:
+Treino: Counter({0: 6645, 1: 6429})
+Validação: Counter({1: 990, 0: 810})
+Teste: Counter({1: 1653, 0: 1485})
+Configuração vazia fornecida. Utilizando valores padrão.
+
+==================================================
+Iniciando Validação Cruzada com Avaliação no Teste
+==================================================
+
+==================================================
+Fold 1/3
+==================================================
+Samples weight distribution: tensor([0.0003, 0.0003, 0.0003,  ..., 0.0003, 0.0003, 0.0003],
+       dtype=torch.float64)
+
+Epoch 1/25
+Batch 0, Loss: 0.2678
+Batch 10, Loss: 0.2385
+Batch 20, Loss: 0.2784
+Batch 30, Loss: 0.2286
+Batch 40, Loss: 0.2245
+Batch 50, Loss: 0.1947
+Batch 60, Loss: 0.2829
+Batch 70, Loss: 0.2519
+Batch 80, Loss: 0.1991
+Batch 90, Loss: 0.2081
+Batch 100, Loss: 0.2397
+Batch 110, Loss: 0.1949
+Batch 120, Loss: 0.2223
+Batch 130, Loss: 0.2161
+Batch 140, Loss: 0.2355
+Batch 150, Loss: 0.2168
+Batch 160, Loss: 0.2548
+Batch 170, Loss: 0.2181
+Batch 180, Loss: 0.1761
+Batch 190, Loss: 0.2115
+Train Loss: 0.2366, Train Acc: 67.57%, Val AUC: 0.7719, Val F1: 0.7369
+Epoch finished. Current fold best Val AUC: 0.7719, F1: 0.7369, Global best AUC: 0.0000
+
+Epoch 2/25
+Batch 0, Loss: 0.1861
+Batch 10, Loss: 0.2043
+Batch 20, Loss: 0.2715
+Batch 30, Loss: 0.2374
+Batch 40, Loss: 0.2182
+Batch 50, Loss: 0.1898
+Batch 60, Loss: 0.2022
+Batch 70, Loss: 0.2073
+Batch 80, Loss: 0.2333
+Batch 90, Loss: 0.1856
+Batch 100, Loss: 0.1498
+Batch 110, Loss: 0.1642
+Batch 120, Loss: 0.2285
+Batch 130, Loss: 0.2198
+Batch 140, Loss: 0.2018
+Batch 150, Loss: 0.2340
+Batch 160, Loss: 0.1958
+Batch 170, Loss: 0.2022
+Batch 180, Loss: 0.2384
+Batch 190, Loss: 0.1680
+Train Loss: 0.2132, Train Acc: 72.69%, Val AUC: 0.7384, Val F1: 0.6869
+Trial 192 falhou com erro: 
+Configuração vazia fornecida. Utilizando valores padrão.
+
+==================================================
+Iniciando Validação Cruzada com Avaliação no Teste
+==================================================
+
+==================================================
+Fold 1/3
+==================================================
+Samples weight distribution: tensor([0.0003, 0.0003, 0.0003,  ..., 0.0003, 0.0003, 0.0003],
+       dtype=torch.float64)
+
+Epoch 1/25
+Batch 0, Loss: 0.2610
+Batch 10, Loss: 0.2343
+Batch 20, Loss: 0.2266
+Batch 30, Loss: 0.3473
+Batch 40, Loss: 0.2435
+Batch 50, Loss: 0.2685
+Batch 60, Loss: 0.2983
+Batch 70, Loss: 0.2325
+Batch 80, Loss: 0.2358
+Batch 90, Loss: 0.2397
+Batch 100, Loss: 0.2537
+Batch 110, Loss: 0.3023
+Batch 120, Loss: 0.2852
+Batch 130, Loss: 0.2893
+Batch 140, Loss: 0.2428
+Batch 150, Loss: 0.2024
+Batch 160, Loss: 0.2360
+Batch 170, Loss: 0.1996
+Batch 180, Loss: 0.2182
+Batch 190, Loss: 0.1978
+Train Loss: 0.2504, Train Acc: 63.25%, Val AUC: 0.4134, Val F1: 0.6891
+Trial 234 falhou com erro: 
+Configuração vazia fornecida. Utilizando valores padrão.
+
+==================================================
+Iniciando Validação Cruzada com Avaliação no Teste
+==================================================
+
+==================================================
+Fold 1/3
+==================================================
+Samples weight distribution: tensor([0.0003, 0.0003, 0.0003,  ..., 0.0003, 0.0003, 0.0003],
+       dtype=torch.float64)
+
+Epoch 1/25
+Batch 0, Loss: 0.2565
+Batch 10, Loss: 0.2730
+Batch 20, Loss: 0.2393
+Batch 30, Loss: 0.2411
+Batch 40, Loss: 0.2606
+Batch 50, Loss: 0.2740
+Batch 60, Loss: 0.2478
+Batch 70, Loss: 0.2865
+Batch 80, Loss: 0.2547
+Batch 90, Loss: 0.2414
+Batch 100, Loss: 0.2392
+Batch 110, Loss: 0.2043
+Batch 120, Loss: 0.2695
+Batch 130, Loss: 0.2549
+Batch 140, Loss: 0.1755
+Batch 150, Loss: 0.2042
+Batch 160, Loss: 0.2492
+Batch 170, Loss: 0.2063
+Batch 180, Loss: 0.2230
+Batch 190, Loss: 0.2661
+Train Loss: 0.2522, Train Acc: 61.69%, Val AUC: 0.7366, Val F1: 0.6836
+Epoch finished. Current fold best Val AUC: 0.7366, F1: 0.6836, Global best AUC: 0.0000
+
+Epoch 2/25
+Batch 0, Loss: 0.2723
+Batch 10, Loss: 0.2319
+Batch 20, Loss: 0.2945
+Batch 30, Loss: 0.2140
+Batch 40, Loss: 0.2062
+Batch 50, Loss: 0.2152
+Batch 60, Loss: 0.1720
+Batch 70, Loss: 0.2490
+Batch 80, Loss: 0.2345
+Batch 90, Loss: 0.2473
+Batch 100, Loss: 0.2189
+Batch 110, Loss: 0.2708
+Batch 120, Loss: 0.2498
+Batch 130, Loss: 0.2271
+Batch 140, Loss: 0.2030
+Batch 150, Loss: 0.1995
+Batch 160, Loss: 0.1949
+Batch 170, Loss: 0.1549
+Batch 180, Loss: 0.2596
+Batch 190, Loss: 0.2365
+Train Loss: 0.2231, Train Acc: 69.38%, Val AUC: 0.7763, Val F1: 0.7417
+Epoch finished. Current fold best Val AUC: 0.7763, F1: 0.7417, Global best AUC: 0.0000
+
+Epoch 3/25
+Batch 0, Loss: 0.2219
+Batch 10, Loss: 0.2061
+Batch 20, Loss: 0.1938
+Batch 30, Loss: 0.1975
+Batch 40, Loss: 0.1787
+Batch 50, Loss: 0.2214
+Batch 60, Loss: 0.1878
+Batch 70, Loss: 0.2256
+Batch 80, Loss: 0.1750
+Batch 90, Loss: 0.2150
+Batch 100, Loss: 0.1871
+Batch 110, Loss: 0.2817
+Batch 120, Loss: 0.2079
+Batch 130, Loss: 0.2034
+Batch 140, Loss: 0.1694
+Batch 150, Loss: 0.1944
+Batch 160, Loss: 0.2204
+Batch 170, Loss: 0.1464
+Batch 180, Loss: 0.2104
+Batch 190, Loss: 0.2155
+Train Loss: 0.2087, Train Acc: 73.19%, Val AUC: 0.8054, Val F1: 0.7238
+Epoch finished. Current fold best Val AUC: 0.8054, F1: 0.7238, Global best AUC: 0.0000
+
+Epoch 4/25
+Batch 0, Loss: 0.1786
+Batch 10, Loss: 0.1613
+Batch 20, Loss: 0.1818
+Batch 30, Loss: 0.1845
+Batch 40, Loss: 0.3182
+Batch 50, Loss: 0.1978
+Batch 60, Loss: 0.2126
+Batch 70, Loss: 0.2346
+Batch 80, Loss: 0.2489
+Batch 90, Loss: 0.2040
+Batch 100, Loss: 0.2019
+Batch 110, Loss: 0.1791
+Batch 120, Loss: 0.1541
+Batch 130, Loss: 0.2175
+Batch 140, Loss: 0.1691
+Batch 150, Loss: 0.1680
+Batch 160, Loss: 0.2221
+Batch 170, Loss: 0.2526
+Batch 180, Loss: 0.1912
+Batch 190, Loss: 0.2404
+Train Loss: 0.1989, Train Acc: 74.57%, Val AUC: 0.7565, Val F1: 0.7130
+Epoch finished. Current fold best Val AUC: 0.8054, F1: 0.7130, Global best AUC: 0.0000
+
+Epoch 5/25
+Batch 0, Loss: 0.2042
+Batch 10, Loss: 0.2047
+Batch 20, Loss: 0.2145
+Batch 30, Loss: 0.2235
+Batch 40, Loss: 0.2158
+Batch 50, Loss: 0.2050
+Batch 60, Loss: 0.1771
+Batch 70, Loss: 0.2269
+Batch 80, Loss: 0.2122
+Batch 90, Loss: 0.1551
+Batch 100, Loss: 0.1534
+Batch 110, Loss: 0.2195
+Batch 120, Loss: 0.2020
+Batch 130, Loss: 0.1754
+Batch 140, Loss: 0.2010
+Batch 150, Loss: 0.2392
+Batch 160, Loss: 0.2207
+Batch 170, Loss: 0.2279
+Batch 180, Loss: 0.2352
+Batch 190, Loss: 0.1522
+Train Loss: 0.2063, Train Acc: 73.42%, Val AUC: 0.8285, Val F1: 0.7572
+Epoch finished. Current fold best Val AUC: 0.8285, F1: 0.7572, Global best AUC: 0.0000
+
+Epoch 6/25
+Batch 0, Loss: 0.1795
+Batch 10, Loss: 0.1472
+Batch 20, Loss: 0.1991
+Batch 30, Loss: 0.1683
+Batch 40, Loss: 0.2576
+Batch 50, Loss: 0.2056
+Batch 60, Loss: 0.1874
+Batch 70, Loss: 0.1823
+Batch 80, Loss: 0.1972
+Batch 90, Loss: 0.1588
+Batch 100, Loss: 0.2117
+Batch 110, Loss: 0.1812
+Batch 120, Loss: 0.1782
+Batch 130, Loss: 0.1889
+Batch 140, Loss: 0.1300
+Batch 150, Loss: 0.1718
+Batch 160, Loss: 0.2078
+Batch 170, Loss: 0.1208
+Batch 180, Loss: 0.1237
+Batch 190, Loss: 0.2759
+Train Loss: 0.1808, Train Acc: 78.15%, Val AUC: 0.8317, Val F1: 0.7682
+Epoch finished. Current fold best Val AUC: 0.8317, F1: 0.7682, Global best AUC: 0.0000
+
+Epoch 7/25
+Batch 0, Loss: 0.1938
+Batch 10, Loss: 0.2027
+Batch 20, Loss: 0.1874
+Batch 30, Loss: 0.2102Número de arquivos de imagem encontrados: 18012
+Número de arquivos válidos após filtragem: 18012
+  patient_id  ... diagnosis_code
+0        180  ...              0
+1        180  ...              0
+2        180  ...              0
+3        180  ...              0
+4        180  ...              0
+
+[5 rows x 4 columns]
+Número total de imagens processadas: 18012
+=== Estatísticas após filtragem ===
+Número total de pacientes: 181
+Número total de imagens: 11588
+Pacientes por tipo:
+patient_type
+normal_only    128
+rop_only        53
+Name: count, dtype: int64
+
+=== Split treino/teste ===
+Pacientes treino: 144 | Pacientes teste: 37
+Imagens treino: 9168 | Imagens teste: 2420
+Distribuição de classes (treino): Counter({0: 5922, 1: 3246})
+Distribuição de classes (teste): Counter({0: 1473, 1: 947})
+=== Split Treino/Validação/Teste ===
+Pacientes treino: 127 | Pacientes validação: 23 | Pacientes teste: 38
+Imagens treino: 13074 | Imagens validação: 1800 | Imagens teste: 3138
+
+Distribuição de classes:
+Treino: Counter({0: 6645, 1: 6429})
+Validação: Counter({1: 990, 0: 810})
+Teste: Counter({1: 1653, 0: 1485})
+Configuração vazia fornecida. Utilizando valores padrão.
+
+==================================================
+Iniciando Validação Cruzada com Avaliação no Teste
+==================================================
+
+==================================================
+Fold 1/3
+==================================================
+Samples weight distribution: tensor([0.0003, 0.0003, 0.0003,  ..., 0.0003, 0.0003, 0.0003],
+       dtype=torch.float64)
+
+Epoch 1/25
+Batch 0, Loss: 0.2640
+Batch 10, Loss: 0.3168
+Batch 20, Loss: 0.2450
+Batch 30, Loss: 0.2794
+Batch 40, Loss: 0.2392
+Batch 50, Loss: 0.2375
+Batch 60, Loss: 0.2578
+Batch 70, Loss: 0.2513
+Batch 80, Loss: 0.2209
+Batch 90, Loss: 0.2305
+Batch 100, Loss: 0.2308
+Batch 110, Loss: 0.2456
+Batch 120, Loss: 0.2724
+Batch 130, Loss: 0.2639
+Batch 140, Loss: 0.2665
+Batch 150, Loss: 0.2636
+Batch 160, Loss: 0.2442
+Batch 170, Loss: 0.1838
+Batch 180, Loss: 0.1687
+Batch 190, Loss: 0.2822
+Train Loss: 0.2544, Train Acc: 59.99%, Val AUC: 0.6677, Val F1: 0.7075
+Trial 190 falhou com erro: 
+Configuração vazia fornecida. Utilizando valores padrão.
+
+==================================================
+Iniciando Validação Cruzada com Avaliação no Teste
+==================================================
+
+==================================================
+Fold 1/3
+==================================================
+Samples weight distribution: tensor([0.0003, 0.0003, 0.0003,  ..., 0.0003, 0.0003, 0.0003],
+       dtype=torch.float64)
+
+Epoch 1/25
+Batch 0, Loss: 0.2557
+Batch 10, Loss: 0.2398
+Batch 20, Loss: 0.2875
+Batch 30, Loss: 0.2622
+Batch 40, Loss: 0.2279
+Batch 50, Loss: 0.2587
+Batch 60, Loss: 0.2467
+Batch 70, Loss: 0.2281
+Batch 80, Loss: 0.2367
+Batch 90, Loss: 0.2547
+Batch 100, Loss: 0.2539
+Batch 110, Loss: 0.2406
+Batch 120, Loss: 0.1998
+Batch 130, Loss: 0.2801
+Batch 140, Loss: 0.1753
+Batch 150, Loss: 0.2040
+Batch 160, Loss: 0.2193
+Batch 170, Loss: 0.2226
+Batch 180, Loss: 0.2315
+Batch 190, Loss: 0.2332
+Train Loss: 0.2466, Train Acc: 63.64%, Val AUC: 0.7032, Val F1: 0.6281
+Trial 208 falhou com erro: 
+Configuração vazia fornecida. Utilizando valores padrão.
+
+==================================================
+Iniciando Validação Cruzada com Avaliação no Teste
+==================================================
+
+==================================================
+Fold 1/3
+==================================================
+Samples weight distribution: tensor([0.0003, 0.0003, 0.0003,  ..., 0.0003, 0.0003, 0.0003],
+       dtype=torch.float64)
+
+Epoch 1/25
+Batch 0, Loss: 0.2585
+Batch 10, Loss: 0.2937
+Batch 20, Loss: 0.2714
+Batch 30, Loss: 0.2635
+Batch 40, Loss: 0.2905
+Batch 50, Loss: 0.3140
+Batch 60, Loss: 0.2848
+Batch 70, Loss: 0.2782
+Batch 80, Loss: 0.2099
+Batch 90, Loss: 0.2429
+Batch 100, Loss: 0.2660
+Batch 110, Loss: 0.2274
+Batch 120, Loss: 0.2224
+Batch 130, Loss: 0.2732
+Batch 140, Loss: 0.2320
+Batch 150, Loss: 0.2193
+Batch 160, Loss: 0.2280
+Batch 170, Loss: 0.2533
+Batch 180, Loss: 0.2309
+Batch 190, Loss: 0.2142
+Train Loss: 0.2440, Train Acc: 63.77%, Val AUC: 0.8112, Val F1: 0.7441
+Epoch finished. Current fold best Val AUC: 0.8112, F1: 0.7441, Global best AUC: 0.0000
+
+Epoch 2/25
+Batch 0, Loss: 0.1765
+Batch 10, Loss: 0.2146
+Batch 20, Loss: 0.2279
+Batch 30, Loss: 0.2611
+Batch 40, Loss: 0.2139
+Batch 50, Loss: 0.3403
+Batch 60, Loss: 0.2540
+Batch 70, Loss: 0.2207
+Batch 80, Loss: 0.2057
+Batch 90, Loss: 0.2194
+Batch 100, Loss: 0.3375
+Batch 110, Loss: 0.2060
+Batch 120, Loss: 0.2569
+Batch 130, Loss: 0.2086
+Batch 140, Loss: 0.2547
+Batch 150, Loss: 0.2222
+Batch 160, Loss: 0.2067
+Batch 170, Loss: 0.1916
+Batch 180, Loss: 0.2626
+Batch 190, Loss: 0.1825
+Train Loss: 0.2183, Train Acc: 72.73%, Val AUC: 0.7532, Val F1: 0.7043
+Epoch finished. Current fold best Val AUC: 0.8112, F1: 0.7043, Global best AUC: 0.0000
+
+Epoch 3/25
+Batch 0, Loss: 0.1569
+Batch 10, Loss: 0.1967
+Batch 20, Loss: 0.2164
+Batch 30, Loss: 0.1883
+Batch 40, Loss: 0.2018
+Batch 50, Loss: 0.2370
+Batch 60, Loss: 0.1805
+Batch 70, Loss: 0.1487
+Batch 80, Loss: 0.2623
+Batch 90, Loss: 0.1977
+Batch 100, Loss: 0.2537
+Batch 110, Loss: 0.2614
+Batch 120, Loss: 0.2124
+Batch 130, Loss: 0.1849
+Batch 140, Loss: 0.1979
+Batch 150, Loss: 0.1933
+Batch 160, Loss: 0.1749
+Batch 170, Loss: 0.1441
+Batch 180, Loss: 0.2034
+Batch 190, Loss: 0.1695
+Train Loss: 0.2029, Train Acc: 75.47%, Val AUC: 0.8400, Val F1: 0.7822
+Epoch finished. Current fold best Val AUC: 0.8400, F1: 0.7822, Global best AUC: 0.0000
+
+Epoch 4/25
+Batch 0, Loss: 0.1614
+Batch 10, Loss: 0.2226
+Batch 20, Loss: 0.2637
+Batch 30, Loss: 0.1842
+Batch 40, Loss: 0.1593
+Batch 50, Loss: 0.1552
+Batch 60, Loss: 0.1843
+Batch 70, Loss: 0.1523
+Batch 80, Loss: 0.1960
+Batch 90, Loss: 0.1867
+Batch 100, Loss: 0.2083
+Batch 110, Loss: 0.1266
+Batch 120, Loss: 0.1703
+Batch 130, Loss: 0.2018
+Batch 140, Loss: 0.1789
+Batch 150, Loss: 0.1653
+Batch 160, Loss: 0.2124
+Batch 170, Loss: 0.1831
+Batch 180, Loss: 0.1975
+Batch 190, Loss: 0.1398
+Train Loss: 0.1902, Train Acc: 77.79%, Val AUC: 0.8319, Val F1: 0.7500
+Epoch finished. Current fold best Val AUC: 0.8400, F1: 0.7500, Global best AUC: 0.0000
+
+Epoch 5/25
+Batch 0, Loss: 0.2363
+Batch 10, Loss: 0.1308
+Batch 20, Loss: 0.2202
+Batch 30, Loss: 0.2413
+Batch 40, Loss: 0.1561
+Batch 50, Loss: 0.1205
+Batch 60, Loss: 0.1884
+Batch 70, Loss: 0.1842
+Batch 80, Loss: 0.1162
+Batch 90, Loss: 0.1566
+Batch 100, Loss: 0.2117
+Batch 110, Loss: 0.2313
+Batch 120, Loss: 0.1864
+Batch 130, Loss: 0.1615
+Batch 140, Loss: 0.1931
+Batch 150, Loss: 0.1330
+Batch 160, Loss: 0.1632
+Batch 170, Loss: 0.2304
+Batch 180, Loss: 0.1986
+Batch 190, Loss: 0.2025
+Train Loss: 0.1810, Train Acc: 78.97%, Val AUC: 0.8479, Val F1: 0.7674
+Epoch finished. Current fold best Val AUC: 0.8479, F1: 0.7674, Global best AUC: 0.0000
+
+Epoch 6/25
+Batch 0, Loss: 0.1738
+Batch 10, Loss: 0.1771
+Batch 20, Loss: 0.2064
+Batch 30, Loss: 0.2521
+Batch 40, Loss: 0.1985
+Batch 50, Loss: 0.1481
+Batch 60, Loss: 0.1608
+Batch 70, Loss: 0.1626
+Batch 80, Loss: 0.1942
+Batch 90, Loss: 0.1590
+Batch 100, Loss: 0.1756
+Batch 110, Loss: 0.0930
+Batch 120, Loss: 0.0939
+Batch 130, Loss: 0.1506
+Batch 140, Loss: 0.1462
+Batch 150, Loss: 0.1022
+Batch 160, Loss: 0.1606
+Batch 170, Loss: 0.1763
+Batch 180, Loss: 0.1099
+Batch 190, Loss: 0.1899
+Train Loss: 0.1735, Train Acc: 79.46%, Val AUC: 0.8826, Val F1: 0.8097
+Epoch finished. Current fold best Val AUC: 0.8826, F1: 0.8097, Global best AUC: 0.0000
+
+Epoch 7/25
+Batch 0, Loss: 0.1717
+Batch 10, Loss: 0.1749
+Batch 20, Loss: 0.1208
+Batch 30, Loss: 0.1269
+Batch 40, Loss: 0.1877
+Batch 50, Loss: 0.1832
+Batch 60, Loss: 0.1997
+Batch 70, Loss: 0.1716
+Batch 80, Loss: 0.1650
+Batch 90, Loss: 0.2197
+Batch 100, Loss: 0.1316
+Batch 110, Loss: 0.1980
+Batch 120, Loss: 0.1259
+Batch 130, Loss: 0.1363
+Batch 140, Loss: 0.1706
+Batch 150, Loss: 0.1588
+Batch 160, Loss: 0.2029
+Batch 170, Loss: 0.1330
+Batch 180, Loss: 0.1559
+Batch 190, Loss: 0.1558
+Train Loss: 0.1624, Train Acc: 81.68%, Val AUC: 0.8609, Val F1: 0.8099
+Epoch finished. Current fold best Val AUC: 0.8826, F1: 0.8099, Global best AUC: 0.0000
+
+Epoch 8/25
+Batch 0, Loss: 0.1677
+Batch 10, Loss: 0.1508
+Batch 20, Loss: 0.2766
+Batch 30, Loss: 0.1904
