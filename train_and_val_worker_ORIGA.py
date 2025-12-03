@@ -13,16 +13,17 @@ from torch.utils.data import WeightedRandomSampler
 import os
 import matplotlib.pyplot as plt
 import torch.nn.functional as F
+from binary_focal_loss import BinaryFocalLoss
 
-class TrainAndEvalWorker:
+class TrainAndEvalWorkerOriga:
     def __init__(self, config:dict):
         if not config:
             print("Configuração vazia fornecida. Utilizando valores padrão.")
             self.config = {
                 'learning_rate': 1e-3,
                 'weight_decay': 1e-4,
-                'batch_size': 64,
-                'num_epochs': 20,
+                'batch_size': 8,
+                'num_epochs': 35,
                 'device': 'cuda:0' if torch.cuda.is_available() else 'cpu',
             }
         else:
@@ -34,7 +35,6 @@ class TrainAndEvalWorker:
             lr=self.config.get('learning_rate', 1e-4),
             weight_decay=self.config.get('weight_decay', 1e-5)
         )
-        # self.criterion = nn.BCEWithLogitsLoss()
         self.criterion = BinaryFocalLoss(alpha=0.75, gamma=1.0)
         self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='min', factor=0.1, patience=5)
 
@@ -235,7 +235,7 @@ class TrainAndEvalWorker:
             print(f"Fold {fold+1} best threshold: {best_threshold_fold:.4f} (best val AUC in fold: {best_val_auc:.4f})")
            
             # salvar curva de loss por fold
-            os.makedirs("saved_models/plot", exist_ok=True)
+            os.makedirs("saved_models/plot/efficient_ORIGA/", exist_ok=True)
             plt.figure()
             plt.plot(train_losses, label="Train Loss")
             plt.plot(val_losses, label="Val Loss")
@@ -244,7 +244,7 @@ class TrainAndEvalWorker:
             plt.title(f"Fold {fold+1} - Loss Curves")
             plt.legend()
             plt.grid(True)
-            plt.savefig(f"saved_models/plot/fold_{fold+1}_loss_curve.png")
+            plt.savefig(f"saved_models/plot/efficient_ORIGA/fold_{fold+1}_loss_curve.png")
             plt.close()
             # registrar resultado resumido do fold
             fold_results.append({
@@ -259,13 +259,14 @@ class TrainAndEvalWorker:
             print(f"\nAverage threshold across folds: {self.avg_threshold:.4f}")
             # opcional: salvar em arquivo (texto simples)
             try:
-                with open('saved_models/avg_threshold.txt', 'w') as f:
+                os.makedirs('saved_models/efficient_ORIGA', exist_ok=True)
+                with open('saved_models/efficient_ORIGA/avg_threshold.txt', 'w') as f:
                     f.write(str(self.avg_threshold))
             except Exception:
                 pass
 
         if best_model_state is not None:
-            torch.save(best_model_state, 'saved_models/best_model_efficientNET.pth')
+            torch.save(best_model_state, 'saved_models/efficient_ORIGA/best_model.pth')
             print(f'\nBest model saved! Fold {best_fold}, Best AUC: {best_global_auc:.4f}')
         avg_auc = sum([r['best_val_auc'] for r in fold_results]) / len(fold_results)
         print(f'\nCross-Validation Results:')
@@ -349,11 +350,11 @@ class TrainAndEvalWorker:
         print(f"{'='*50}")
 
         # salvar matriz de confusão como imagem
-        os.makedirs("saved_models/plot", exist_ok=True)
+        os.makedirs("saved_models/plot/efficient_ORIGA", exist_ok=True)
         disp = ConfusionMatrixDisplay(conf_matrix)
         disp.plot(cmap='Blues')
-        plt.title("Confusion Matrix - Test Set")
-        plt.savefig("saved_models/plot/test_confusion_matrix.png")
+        plt.title("Matriz de Confusão")
+        plt.savefig("saved_models/plot/efficient_ORIGA/test_confusion_matrix.png")
         plt.close()
         ####
         results = {
@@ -370,39 +371,6 @@ class TrainAndEvalWorker:
         # threshold
 
         #salvando results
-        pd.DataFrame(results, index=[0]).to_csv('test_results.csv')
+        pd.DataFrame(results, index=[0]).to_csv('test_results_Efficient_ORIGA.csv')
         
         return results
-
-class BinaryFocalLoss(nn.Module):
-    """
-    Implementação da Binary Focal Loss com suporte a logits.
-    """
-    def __init__(self, alpha=0.25, gamma=2.0, reduction='mean'):
-        super(BinaryFocalLoss, self).__init__()
-        self.alpha = alpha
-        self.gamma = gamma
-        self.reduction = reduction
-
-    def forward(self, inputs, targets):
-        """
-        Args:
-            inputs: logits (saída bruta da rede antes do sigmoid)
-            targets: rótulos binários (0 ou 1)
-        """
-        # Sigmoid e cálculo da BCE
-        bce_loss = F.binary_cross_entropy_with_logits(inputs, targets, reduction='none')
-        probs = torch.sigmoid(inputs)
-        p_t = probs * targets + (1 - probs) * (1 - targets)
-
-        # Fator focal
-        focal_factor = (1 - p_t) ** self.gamma
-        loss = self.alpha * focal_factor * bce_loss
-
-        # Redução final
-        if self.reduction == 'mean':
-            return loss.mean()
-        elif self.reduction == 'sum':
-            return loss.sum()
-        else:
-            return loss
