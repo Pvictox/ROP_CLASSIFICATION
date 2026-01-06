@@ -14,6 +14,40 @@ class DataFactory:
         self.img_path = img_path
         self.metadata_path = metadata_path
 
+    def load_data_ROP(self, verbose=True, allowed_diagnoses=None) -> pd.DataFrame | None:
+        image_files = glob(os.path.join(self.img_path, "**", "*.jpg"), recursive=True)
+        if not image_files:
+            raise FileNotFoundError(f"Nenhum arquivo de imagem encontrado em {self.img_path}")
+        if verbose:
+            print(f"Número de arquivos de imagem encontrados: {len(image_files)}")
+
+        patient_ids, valid_files, new_binary_labels, diagnosis_codes = [], [], [], []
+        for file_path in image_files:
+            diagnosis = self.get_diagnosis_from_filename(file_path)
+            if allowed_diagnoses is not None and diagnosis not in allowed_diagnoses: # Se a lista de diagnósticos permitidos for fornecida, filtrar
+                continue
+            if diagnosis is not None:
+                diagnosis_codes.append(diagnosis)
+                patient_id = self.get_patient_id_from_filename(file_path)
+                if patient_id is None:
+                    continue
+                patient_ids.append(patient_id)
+                binary_label = self.convert_to_binary_label(diagnosis, not_rop_list=[0]) #COnsiderando apenas 0 como sem ROP
+                valid_files.append(file_path)
+                new_binary_labels.append(binary_label)
+        if verbose:
+                print(f"Número de arquivos válidos após filtragem: {len(valid_files)}")
+        
+        binarized_dataframe = pd.DataFrame({
+            'patient_id': patient_ids,
+            'filepath': valid_files,
+            'binary_label': new_binary_labels,
+            'diagnosis_code': diagnosis_codes
+        })
+
+        return binarized_dataframe
+
+
     def load_data(self, verbose=True, allowed_diagnoses=None) -> pd.DataFrame | None:
         # Ler o CSV com as informações
         df = pd.read_csv(self.metadata_path)
