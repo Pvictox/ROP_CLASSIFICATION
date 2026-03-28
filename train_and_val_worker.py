@@ -371,7 +371,7 @@ class TrainAndEvalWorker:
             'mean_val_f1': mean_val_f1,
             'std_val_f1': std_val_f1,
             'mean_test_auc': mean_test_auc,
-            'std_test_auc': std_val_auc,
+            'std_test_auc': std_test_auc,
             'best_global_test_auc': best_global_test_auc,
             'best_fold': best_fold,
             'avg_threshold': avg_threshold,
@@ -425,22 +425,9 @@ class TrainAndEvalWorker:
             'auc_roc': auc_roc
         }
 
-    def evaluate(self, test_dataset, model_path=None, dynamic_config=None):
-        # Se dynamic_config for fornecido, recria o modelo com a arquitetura correta (NAS)
-        if dynamic_config is not None:
-            self.model = DynamicEfficientNet(dynamic_config).to(self.config['device'])
-            print("Modelo DynamicEfficientNet instanciado para avaliação.")
-
+    def evaluate(self, test_dataset, model_path=None):
         if model_path:
-            checkpoint = torch.load(model_path, map_location=self.config['device'])
-            
-          
-            if isinstance(checkpoint, dict):
-                self.model.load_state_dict(checkpoint)
-            else:
-                self.model = checkpoint
-            
-            self.model.to(self.config['device'])
+            self.model.load_state_dict(torch.load(model_path, map_location=self.config['device']))
             print(f"Modelo carregado de: {model_path}")
         
         test_loader = DataLoader(
