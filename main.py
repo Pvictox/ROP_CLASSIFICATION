@@ -1,6 +1,7 @@
 
 
 import test
+import torch
 from data_factory.data_factory import DataFactory
 from utils import Utils
 from data_factory.ROP_dataset import ROPDataset
@@ -10,6 +11,7 @@ import os
 import optuna
 from optuna_trials import OptunaTrials
 from dotenv import load_dotenv
+from gradcam import plot_gradcam
 
 load_dotenv()
 
@@ -27,6 +29,30 @@ CSV_FILE_PATH = '/home/pedro_fonseca/PATIENT_ROP/DATASET/infant_retinal_database
 IS_INTERACTIVE = True #Isto é uma flag para indicar se o código está sendo executado em um ambiente interativo (como Jupyter Notebook) ou não.
 
 os.makedirs('saved_models', exist_ok=True)
+
+def plot_gradcam_grid(
+    model,
+    dataset,
+    n_images: int = 8,
+    figsize=(12, 6),
+    save_path: str = 'gradcam_grid.png',
+    show: bool = False,
+):
+    plot_gradcam(
+        model=model,
+        dataset=dataset,
+        n_images=n_images,
+        class_names=['No ROP', 'ROP'],
+        target_layer=None,  # Deixa a função detectar automaticamente
+        device='cuda' if torch.cuda.is_available() else 'cpu',
+        indices=None,  # Deixa a função escolher as imagens
+        figsize_per_image=(3.5, 4.2),
+        ncols=4,
+        save_path=save_path,
+        show=show,
+    )
+    
+
 def main():
     data_factory = DataFactory(IMG_FILE_PATH, CSV_FILE_PATH)
     df = data_factory.load_data(allowed_diagnoses=[0, 1, 2, 3, 4,5,6,7,8,9, 10,11,12,13])  #1–4, 8, 9 (ROP) contra 0 (physiological)
@@ -36,38 +62,45 @@ def main():
         print(f"Número total de imagens processadas: {len(df)}")        
         rop_dataset = ROPDataset(df, is_train=False, apply_clahe=True)
         # X_train, y_train, train_indx, patient_ids_train, gkf, test_dataset = data_factory.prepare_data_for_cross_validation(rop_dataset)
-        X_train, y_train, train_indx, patient_ids_train, gkf, test_dataset = data_factory.prepare_data_for_cross_validation_3(rop_dataset, num_splits=3)
+        #X_train, y_train, train_indx, patient_ids_train, gkf, test_dataset = data_factory.prepare_data_for_cross_validation_3(rop_dataset, num_splits=3)
 
         train_full_subset, val_full_subset, test_subset = data_factory.prepare_train_val_and_test_datasets(rop_dataset)
 
-        pruner = optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=0, interval_steps=1)
-        study = optuna.create_study(direction='maximize', pruner=pruner, study_name='dynamic_efficientnet_optimization_trials_final_MEU_DEUS', storage=db_url, load_if_exists=True
-                    )
-        optuna_trials = OptunaTrials()
-        N_TRIALS = 50
-        try:
-            study.optimize(lambda trial: optuna_trials.objective(trial, X_train, y_train, patient_ids_train, train_indx, gkf, rop_dataset, num_trials=N_TRIALS, full_train_subset=train_full_subset, full_val_subset=val_full_subset, test_subset=test_subset), n_trials=N_TRIALS)
-        except KeyboardInterrupt:
-            print("Otimização interrompida pelo usuário.")
+        # ----------- GRAD CAM --------------
+        # Carrega o modelo treinado
+        model = torch.load('Daan_finetuned/finetuned_best_fold_5.pth', map_location=torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
+        # Plota o Grad-CAM
+        plot_gradcam_grid(model, test_subset, n_images=12, save_path='gradcam_grid.png', show=IS_INTERACTIVE)
+        
 
-        worker = TrainAndEvalWorker(config=None, model=None)
+        # pruner = optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=0, interval_steps=1)
+        # study = optuna.create_study(direction='maximize', pruner=pruner, study_name='dynamic_efficientnet_optimization_trials_final_MEU_DEUS', storage=db_url, load_if_exists=True
+        #             )
+        # optuna_trials = OptunaTrials()
+        # N_TRIALS = 50
+        # try:
+        #     study.optimize(lambda trial: optuna_trials.objective(trial, X_train, y_train, patient_ids_train, train_indx, gkf, rop_dataset, num_trials=N_TRIALS, full_train_subset=train_full_subset, full_val_subset=val_full_subset, test_subset=test_subset), n_trials=N_TRIALS)
+        # except KeyboardInterrupt:
+        #     print("Otimização interrompida pelo usuário.")
+
+        # worker = TrainAndEvalWorker(config=None, model=None)
         # results = worker.evaluate(test_subset, model_path='saved_models/best_dynamic_efficientnet.pth')
         #optuna_trials.save_best_model()
-        print("\n--- Otimização Concluída ---")
-        print(f"Melhor trial: {study.best_trial.number}")
-        print(f"Melhor Acurácia de Validação: {study.best_value:.4f}")
+        # print("\n--- Otimização Concluída ---")
+        # print(f"Melhor trial: {study.best_trial.number}")
+        # print(f"Melhor Acurácia de Validação: {study.best_value:.4f}")
         
-        print("\nMelhor Arquitetura Encontrada:")
-        for key, value in study.best_params.items():
-            print(f"  {key}: {value}")
+        # print("\nMelhor Arquitetura Encontrada:")
+        # for key, value in study.best_params.items():
+        #     print(f"  {key}: {value}")
 
-        #Salvando melhor arquitetura em um arquivo de texto
-        with open('best_architecture.txt', 'w') as f:
-            f.write(f"Melhor trial: {study.best_trial.number}\n")
-            f.write(f"Melhor Acurácia de Validação: {study.best_value:.4f}\n")
-            f.write("\nMelhor Arquitetura Encontrada:\n")
-            for key, value in study.best_params.items():
-                f.write(f"{key}: {value}\n")
+        # #Salvando melhor arquitetura em um arquivo de texto
+        # with open('best_architecture.txt', 'w') as f:
+        #     f.write(f"Melhor trial: {study.best_trial.number}\n")
+        #     f.write(f"Melhor Acurácia de Validação: {study.best_value:.4f}\n")
+        #     f.write("\nMelhor Arquitetura Encontrada:\n")
+        #     for key, value in study.best_params.items():
+        #         f.write(f"{key}: {value}\n")
         # train_and_val_worker = TrainAndEvalWorker(config=None)
         # print("Iniciando o treinamento e validação com GroupKFold...")
         # train_and_val_worker.train(X_train, y_train, patient_ids_train, train_indx, gkf, rop_dataset)
