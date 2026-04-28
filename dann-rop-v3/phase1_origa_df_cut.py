@@ -11,6 +11,7 @@ Mantém a lógica "estranha" do notebook original:
 from pathlib import Path
 import sys
 import os
+import json
 
 # garante import de módulos do workspace quando o script é chamado por caminho relativo
 ROOT = Path(__file__).resolve().parents[1]
@@ -21,10 +22,12 @@ import pandas as pd
 import numpy as np
 import torch
 import torch.nn as nn
+import cv2
 from sklearn.model_selection import StratifiedKFold, train_test_split
 from torch import optim
 from torch.utils.data import DataLoader, Subset
 from torchvision import models, transforms
+from PIL import Image
 
 from data_factory.data_factory import DataFactory
 
@@ -94,10 +97,30 @@ df_dev, df_test = train_test_split(
 # ---------------------------------------------------------------------
 # Transforms e datasets
 # ---------------------------------------------------------------------
+class CLAHELab:
+    def __init__(self, clip_limit=2.0, tile_grid_size=(8, 8)):
+        self.clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=tile_grid_size)
+
+    def __call__(self, img):
+        if isinstance(img, Image.Image):
+            img = np.array(img)
+
+        if img.ndim == 2:
+            img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+
+        lab = cv2.cvtColor(img, cv2.COLOR_RGB2LAB)
+        l, a, b = cv2.split(lab)
+        l = self.clahe.apply(l)
+        lab = cv2.merge((l, a, b))
+        img = cv2.cvtColor(lab, cv2.COLOR_LAB2RGB)
+        return Image.fromarray(img)
+
+
 def get_transforms(img_size=256):
     train_transforms = transforms.Compose(
         [
             transforms.Resize((img_size, img_size)),
+            CLAHELab(),
             transforms.RandomHorizontalFlip(),
             transforms.RandomVerticalFlip(),
             transforms.RandomRotation(degrees=360),
@@ -115,6 +138,7 @@ def get_transforms(img_size=256):
     val_transforms = transforms.Compose(
         [
             transforms.Resize((img_size, img_size)),
+            CLAHELab(),
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ]
@@ -339,11 +363,14 @@ def train_dann_kfold(
         save_path = save_dir / f"dann_model_fold_{fold+1}.pth"
         torch.save(model.state_dict(), save_path)
 
+        best_total_loss = min(history["total_loss"]) if history["total_loss"] else None
+
         fold_results.append(
             {
                 "fold": fold + 1,
                 "model_path": str(save_path),
                 "history": history,
+                "best_total_loss": best_total_loss,
             }
         )
 
@@ -353,4 +380,30 @@ def train_dann_kfold(
 if __name__ == "__main__":
     # exatamente o ponto solicitado
     results = train_dann_kfold(source_dataset, target_dataset, k_folds=5, num_epochs=30)
+
+    save_dir = ROOT / "dann-rop-v3" / "checkpoints" / "phase1_cut"
+    save_dir.mkdir(parents=True, exist_ok=True)
+
+    best_fold = None
+    if results:
+        best_result = min(
+            results,
+            key=lambda item: (
+                item.get("best_total_loss")
+                if item.get("best_total_loss") is not None
+                else float("inf")
+            ),
+        )
+        best_fold = best_result.get("fold")
+
+    results_path = save_dir / "phase1_results.json"
+    with results_path.open("w", encoding="utf-8") as f:
+        json.dump(
+            {"best_fold": best_fold, "results": results},
+            f,
+            ensure_ascii=False,
+            indent=2,
+        )
+
     print("Treino encerrado. Folds:", len(results))
+    print("Resultados da fase 1 salvos em:", results_path)

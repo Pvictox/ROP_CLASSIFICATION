@@ -22,11 +22,13 @@ import pandas as pd
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import cv2
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 from sklearn.model_selection import GroupKFold, train_test_split
 from torch import optim
 from torch.utils.data import DataLoader
 from torchvision import models, transforms
+from PIL import Image
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -93,10 +95,30 @@ def resolve_device(device_str):
     return torch.device(device_str)
 
 
+class CLAHELab:
+    def __init__(self, clip_limit=2.0, tile_grid_size=(8, 8)):
+        self.clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=tile_grid_size)
+
+    def __call__(self, img):
+        if isinstance(img, Image.Image):
+            img = np.array(img)
+
+        if img.ndim == 2:
+            img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+
+        lab = cv2.cvtColor(img, cv2.COLOR_RGB2LAB)
+        l, a, b = cv2.split(lab)
+        l = self.clahe.apply(l)
+        lab = cv2.merge((l, a, b))
+        img = cv2.cvtColor(lab, cv2.COLOR_LAB2RGB)
+        return Image.fromarray(img)
+
+
 def get_transforms(img_size=256):
     train_transforms = transforms.Compose(
         [
             transforms.Resize((img_size, img_size)),
+            CLAHELab(),
             transforms.RandomHorizontalFlip(),
             transforms.RandomVerticalFlip(),
             transforms.RandomRotation(degrees=360),
@@ -114,6 +136,7 @@ def get_transforms(img_size=256):
     val_transforms = transforms.Compose(
         [
             transforms.Resize((img_size, img_size)),
+            CLAHELab(),
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ]
@@ -252,6 +275,42 @@ def get_phase1_checkpoint_for_fold(fold, phase1_ckpt_dir, single_checkpoint):
     return phase1_ckpt_dir / f"dann_model_fold_{fold}.pth"
 
 
+def find_best_phase1_checkpoint(phase1_ckpt_dir):
+    results_path = Path(phase1_ckpt_dir) / "phase1_results.json"
+    if not results_path.exists():
+        return None
+
+    try:
+        with results_path.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return None
+
+    best_fold = data.get("best_fold")
+    if isinstance(best_fold, int):
+        candidate = Path(phase1_ckpt_dir) / f"dann_model_fold_{best_fold}.pth"
+        if candidate.exists():
+            return candidate
+
+    results = data.get("results", [])
+    best_result = None
+    best_loss = float("inf")
+    for item in results:
+        loss = item.get("best_total_loss")
+        if loss is None:
+            continue
+        if loss < best_loss:
+            best_loss = loss
+            best_result = item
+
+    if best_result:
+        candidate = Path(best_result.get("model_path", ""))
+        if candidate.exists():
+            return candidate
+
+    return None
+
+
 def replace_class_head(model, num_classes_target):
     n_features = model.class_classifier[1].in_features
     model.class_classifier = nn.Sequential(
@@ -330,7 +389,7 @@ def train_finetuning_groupkfold(
         val_dataset = RetinaDataset(
             dataframe=fold_val_df,
             root_dir="",
-            transform=val_transforms,
+            transform=train_transforms,
             domain_label=1,
             image_col="filepath",
         )
@@ -523,6 +582,10 @@ def main():
 
     phase1_ckpt_dir = Path(args.phase1_ckpt_dir)
     phase1_checkpoint = Path(args.phase1_checkpoint) if args.phase1_checkpoint else None
+    if phase1_checkpoint is None:
+        phase1_checkpoint = find_best_phase1_checkpoint(phase1_ckpt_dir)
+        if phase1_checkpoint:
+            print("Checkpoint fase 1 (melhor fold) encontrado:", phase1_checkpoint)
     save_dir = Path(args.save_dir)
 
     save_split_artifacts(save_dir=save_dir, train_df=train_df, test_df=test_df)
